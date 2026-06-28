@@ -34,10 +34,19 @@ venv\Scripts\activate
 pip install -r requirements.txt
 ```
 
-### Cai FluidSynth
-- Tai: https://github.com/FluidSynth/fluidsynth/releases
-- Giai nen vao C:\tools\fluidsynth\bin\
-- Tai SoundFont FluidR3_GM.sf2 -> luu vao soundfonts/
+> **Luu y:** Can Python 3.11 (khong dung 3.12+). Kiem tra bang: `py -3.11 --version`
+> Neu chua co: tai tai https://www.python.org/downloads/release/python-3119/
+
+### Cai FluidSynth (can cho phan am thanh)
+1. Tai file zip tai: https://github.com/FluidSynth/fluidsynth/releases
+   - Chon file: `fluidsynth-2.x.x-win10-x64-glib.zip`
+2. Giai nen, copy tat ca file trong thu muc `bin\` vao `C:\tools\fluidsynth\bin\`
+3. Tai SoundFont: tim "FluidR3_GM.sf2" tren Google (file ~140MB)
+   - Luu vao: `soundfonts\FluidR3_GM.sf2`
+
+### Cai Camera (neu webcam hong)
+- **Camo** (iPhone): tai Camo Studio cho Windows + app Camo tren iPhone
+- **DroidCam** (Android/iPhone): tai tai dev47apps.com, cai ca app va client PC
 
 ---
 
