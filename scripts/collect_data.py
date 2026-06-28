@@ -12,6 +12,9 @@ import numpy as np
 import csv
 import os
 import time
+import threading
+
+os.environ['PATH'] += r';C:\tools\fluidsynth\bin'
 
 # ── Cấu hình ──────────────────────────────────────────────────────────────
 CAMERA_CONFIG     = os.path.join(os.path.dirname(__file__), '..', 'camera_config.txt')
@@ -24,6 +27,80 @@ PITCH_MAP = [72, 69, 65, 62, 60]  # C5 A4 F4 D4 C4
 # chord theo vị trí tay trái: trên = major(1), giữa = dominant(3), dưới = minor(2)
 CHORD_MAP = [1, 1, 3, 2, 2]  # 0=none, 1=major, 2=minor, 3=dominant
 
+# Nhac nen cho tung che do: (program, notes, tempo_bpm)
+# program: so thu cua nhac cu trong General MIDI
+MODE_MUSIC = {
+    "RIGHT_UD":           (24, [60,64,67],    90),   # Guitar, C major, cham
+    "RIGHT_FAST":         (24, [60,64,67,72], 140),
+    "RIGHT_LR":           (24, [60,64,67],    100),  # Guitar, C major, trai-phai  # Guitar, C major, nhanh
+    "RIGHT_CIRCLE":       (48, [60,63,67],    100),  # Strings, C minor, vua
+    "RIGHT_ZD":           (0,  [60,64,67],    110),  # Piano, C major, vua
+    "LEFT_UD":            (48, [57,60,64],    80),   # Strings, Am, cham
+    "LEFT_ZONES":         (0,  [60,64,67],    90),   # Piano, C major
+    "BOTH_EXPAND":        (24, [60,64,67,72], 100),  # Guitar, C major
+    "BOTH_SAME":          (48, [60,63,67,72], 90),   # Strings, C minor
+    "RIGHT_FAST_LEFT_HOLD":(24,[60,64,67],    130),  # Guitar nhanh
+    "RIGHT_ZZ":           (24, [60,62,64,67], 150),  # Guitar, pentatonic, rat nhanh
+    "NONE":               (None, [],           0),   # Im lang
+}
+
+SF_PATH = os.path.join(os.path.dirname(__file__), '..', 'soundfonts', 'FluidR3_GM.sf2')
+
+class MusicPlayer:
+    """Phat nhac nen trong luc thu data."""
+    def __init__(self):
+        self.fs      = None
+        self.sfid    = None
+        self.running = False
+        self.thread  = None
+        self._notes  = []
+        self._tempo  = 120
+        self._prog   = 24
+        try:
+            import fluidsynth
+            self.fs   = fluidsynth.Synth(gain=0.5)
+            self.fs.start(driver='wasapi')
+            self.sfid = self.fs.sfload(SF_PATH)
+            self.fs.program_select(0, self.sfid, 0, 24)
+            print("Nhac nen: OK")
+        except Exception as e:
+            print(f"Nhac nen: Khong co ({e})")
+
+    def play_mode(self, arrow_type):
+        self.stop()
+        if self.fs is None: return
+        prog, notes, tempo = MODE_MUSIC.get(arrow_type, (None, [], 0))
+        if not notes or prog is None: return
+        self._prog  = prog
+        self._notes = notes
+        self._tempo = tempo
+        self.running = True
+        self.thread  = threading.Thread(target=self._loop, daemon=True)
+        self.thread.start()
+
+    def _loop(self):
+        if self.fs is None: return
+        self.fs.program_select(0, self.sfid, 0, self._prog)
+        beat = 60.0 / self._tempo
+        while self.running:
+            for note in self._notes:
+                if not self.running: break
+                self.fs.noteon(0, note, 70)
+                time.sleep(beat * 0.9)
+                self.fs.noteoff(0, note)
+                time.sleep(beat * 0.1)
+
+    def stop(self):
+        self.running = False
+        if self.fs:
+            for n in range(128):
+                self.fs.noteoff(0, n)
+
+    def delete(self):
+        self.stop()
+        if self.fs:
+            self.fs.delete()
+
 MODES = [
     # ── Tay phai ──────────────────────────────────────────────────────────
     {
@@ -34,9 +111,9 @@ MODES = [
         "active": "right",
     },
     {
-        "name":   "2. TAY PHAI - NHANH CHAM",
-        "desc":   "Tay PHAI vay nhanh roi cham xen ke | Tay TRAI de sau lung",
-        "arrow":  "RIGHT_FAST",
+        "name":   "2. TAY PHAI - TRAI PHAI",
+        "desc":   "Tay PHAI di chuyen tu TRAI sang PHAI va nguoc lai | Tay TRAI de sau lung",
+        "arrow":  "RIGHT_LR",
         "color":  (0, 100, 255),
         "active": "right",
     },
@@ -198,6 +275,12 @@ def draw_arrow(frame, arrow_type, color):
             cv2.arrowedLine(ov, (cx + 60 + ox, cy), (cx + 160 + ox, cy), rc, 5, tipLength=0.3)
         cv2.putText(ov, "VAY NHANH →", (cx + 40, cy - 20), cv2.FONT_HERSHEY_SIMPLEX, 0.6, rc, 2)
         cv2.putText(ov, "DUNG YEN", (cx - 200, cy), cv2.FONT_HERSHEY_SIMPLEX, 0.55, lc, 1)
+
+    elif arrow_type == "RIGHT_LR":
+        cv2.arrowedLine(ov, (cx + 30, cy), (cx + 180, cy), rc, 6, tipLength=0.25)
+        cv2.arrowedLine(ov, (cx + 150, cy + 40), (cx, cy + 40), rc, 6, tipLength=0.25)
+        cv2.putText(ov, "TRAI - PHAI", (cx + 20, cy - 20), cv2.FONT_HERSHEY_SIMPLEX, 0.6, rc, 2)
+        cv2.putText(ov, "DUNG YEN", (cx - 200, cy + 20), cv2.FONT_HERSHEY_SIMPLEX, 0.55, lc, 1)
 
     elif arrow_type == "LEFT_UD":
         cv2.arrowedLine(ov, (cx - 120, cy + 80), (cx - 120, cy - 80), lc, 6, tipLength=0.3)
@@ -396,9 +479,13 @@ def show_intro(cap, mode, mode_idx):
         if key == ord('q'):
             return False
 
-def collect_mode(cap, writer, mode, mode_idx, person_id="unknown"):
+def collect_mode(cap, writer, mode, mode_idx, person_id="unknown", player=None):
     if not show_intro(cap, mode, mode_idx):
         return -1
+
+    # Bat dau phat nhac nen
+    if player:
+        player.play_mode(mode["arrow"])
 
     sample_count = 0
     frame_buffer = []
@@ -472,10 +559,12 @@ def collect_mode(cap, writer, mode, mode_idx, person_id="unknown"):
         cv2.imshow("GestuRhythm - Thu Data", frame)
         key = cv2.waitKey(1) & 0xFF
         if key == ord('q'):
+            if player: player.stop()
             return -1
         elif key == ord(' '):
             paused = not paused
 
+    if player: player.stop()
     return sample_count
 
 def delete_mode_data(selected_indices):
@@ -563,6 +652,7 @@ def main():
         delete_mode_data(selected)
     print()
 
+    player = MusicPlayer()
     total = 0
     with open(OUTPUT_CSV, 'a', newline='') as f:
         writer = csv.writer(f)
@@ -572,12 +662,14 @@ def main():
         for i in selected:
             mode = MODES[i]
             print(f"[{i+1}/{len(MODES)}] {mode['name']}")
-            count = collect_mode(cap, writer, mode, i, person_id)
+            count = collect_mode(cap, writer, mode, i, person_id, player)
             if count == -1:
                 print("Da thoat.")
                 break
             total += count
             print(f"  {count} samples\n")
+
+    player.delete()
 
     cap.release()
     cv2.destroyAllWindows()
