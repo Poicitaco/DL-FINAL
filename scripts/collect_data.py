@@ -30,19 +30,19 @@ CHORD_MAP = [1, 1, 3, 2, 2]  # 0=none, 1=major, 2=minor, 3=dominant
 # Nhac nen cho tung che do: (program, notes, tempo_bpm)
 # program: so thu cua nhac cu trong General MIDI
 MODE_MUSIC = {
-    "RIGHT_UD":           (24, [60,64,67],    90),   # Guitar, C major, cham
-    "RIGHT_FAST":         (24, [60,64,67,72], 140),
-    "RIGHT_LR":           (24, [60,64,67],    100),  # Guitar, C major, trai-phai  # Guitar, C major, nhanh
-    "RIGHT_CIRCLE":       (48, [60,63,67],    100),  # Strings, C minor, vua
-    "RIGHT_ZD":           (0,  [60,64,67],    110),  # Piano, C major, vua
-    "RIGHT_HOLD":         (0,  [60,64,67,69,72], 80),  # Piano, C major, cham
-    "LEFT_UD":            (48, [57,60,64],    80),   # Strings, Am, cham
-    "LEFT_ZONES":         (0,  [60,64,67],    90),   # Piano, C major
-    "BOTH_EXPAND":        (24, [60,64,67,72], 100),  # Guitar, C major
-    "BOTH_SAME":          (48, [60,63,67,72], 90),   # Strings, C minor
-    "RIGHT_FAST_LEFT_HOLD":(24,[60,64,67],    130),  # Guitar nhanh
-    "RIGHT_SLASH":        (24, [60,64,67],    120),  # Guitar staccato
-    "NONE":               (None, [],           0),   # Im lang
+    "RIGHT_UD":           (24, [60,64,67,72,67,64],   80),   # Guitar, C major, len xuong cham
+    "RIGHT_FAST":         (24, [60,64,67,72],          160),  # Guitar, C major, rat nhanh
+    "RIGHT_LR":           (24, [60,65,69],             110),  # Guitar, F major, vua
+    "RIGHT_CIRCLE":       (48, [60,63,67,70,67,63],    90),   # Strings, Cm7, tron
+    "RIGHT_ZD":           (0,  [60,64,67,71],          100),  # Piano, Cmaj7
+    "RIGHT_HOLD":         (19, [48,52,55,60],           60),  # Church organ, C major, rat cham
+    "LEFT_UD":            (48, [57,60,64,67],           75),   # Strings, Am, buon
+    "LEFT_ZONES":         (0,  [60,64,67],              90),   # Piano chord
+    "BOTH_EXPAND":        (24, [48,52,55,60,64,67],     90),   # Guitar, C octave, mo rong
+    "BOTH_SAME":          (48, [55,59,62,67],           95),   # Strings, G major
+    "RIGHT_FAST_LEFT_HOLD":(24,[60,64,67,69,72],       140),  # Guitar lead
+    "RIGHT_SLASH":        (25, [60,60,60,60],           130),  # Acoustic steel, staccato
+    "NONE":               (None, [],                     0),   # Im lang
 }
 
 SF_PATH = os.path.join(os.path.dirname(__file__), '..', 'soundfonts', 'FluidR3_GM.sf2')
