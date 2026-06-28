@@ -359,16 +359,29 @@ def draw_arrow(frame, arrow_type, color):
         cv2.putText(ov, "DUNG YEN", (cx - 200, cy), cv2.FONT_HERSHEY_SIMPLEX, 0.55, lc, 1)
 
     elif arrow_type == "LEFT_ZONES":
-        # 3 vung cao/giua/thap
         zone_h = h // 3
-        for i, (label, c) in enumerate([("TREN - MAJOR",(0,200,100)),
-                                         ("GIUA - DOM",  (0,180,255)),
-                                         ("DUOI - MINOR",(200,80,255))]):
+        zones_info = [
+            ("TREN - MAJOR", (0,200,100)),
+            ("GIUA - DOM",   (0,180,255)),
+            ("DUOI - MINOR", (200,80,255)),
+        ]
+        active_idx = int(time.time() / 3) % len(zones_info)
+        seconds_left = 3 - int(time.time()) % 3
+
+        for i, (label, c) in enumerate(zones_info):
             y_zone = zone_h * i + zone_h // 2
-            cv2.rectangle(ov, (cx-180, zone_h*i+5), (cx-10, zone_h*(i+1)-5), c, 2)
-            cv2.putText(ov, label, (cx-175, y_zone+8), cv2.FONT_HERSHEY_SIMPLEX, 0.55, c, 2)
-        cv2.putText(ov, "GIU 2 GIAY MOI VUNG", (cx-180, h-80),
-                    cv2.FONT_HERSHEY_SIMPLEX, 0.5, (220,220,220), 1)
+            if i == active_idx:
+                pulse = int(180 + 75 * abs(np.sin(time.time() * 4)))
+                ca = (min(c[0]+50,255), min(c[1]+50,255), min(c[2]+50,255))
+                cv2.rectangle(ov, (cx-180, zone_h*i+5), (cx-10, zone_h*(i+1)-5), ca, -1)
+                cv2.putText(ov, label, (cx-175, y_zone+8), cv2.FONT_HERSHEY_SIMPLEX, 0.6, (0,0,0), 2)
+                cv2.putText(ov, f"{seconds_left}s", (cx-30, y_zone+8),
+                            cv2.FONT_HERSHEY_SIMPLEX, 0.9, (0,0,0), 2)
+                cv2.putText(ov, "< DAT TAY TRAI VAO DAY", (cx-175, y_zone+35),
+                            cv2.FONT_HERSHEY_SIMPLEX, 0.45, (0,0,0), 1)
+            else:
+                cv2.rectangle(ov, (cx-180, zone_h*i+5), (cx-10, zone_h*(i+1)-5), c, 2)
+                cv2.putText(ov, label, (cx-175, y_zone+8), cv2.FONT_HERSHEY_SIMPLEX, 0.5, c, 1)
         cv2.putText(ov, "DUNG YEN", (cx + 80, cy), cv2.FONT_HERSHEY_SIMPLEX, 0.55, rc, 1)
 
     elif arrow_type == "BOTH_EXPAND":
