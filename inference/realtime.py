@@ -1,7 +1,7 @@
 """
-GestuRhythm - Real-time inference
-Tay phai = melody (Huong C: AI sinh note theo mood)
-Tay trai = nhac cu (Huong D: chord type -> instrument)
+GestuRhythm - Real-time inference voi Seq2Seq model
+Tay phai = melody (model sinh 16 not)
+Tay trai = chord (Major/Minor/Dominant)
 """
 import os, sys, time, collections
 import cv2
@@ -12,84 +12,87 @@ import torch.nn as nn
 import fluidsynth
 import threading
 
-os.environ['PATH'] += r';C:\FluidSynth\bin'
+os.environ['PATH'] += r';C:\tools\fluidsynth\bin'
 
-# ── Config ────────────────────────────────────────────────────────────────
-BASE        = os.path.join(os.path.dirname(__file__), '..')
-MODEL_PATH  = os.path.join(BASE, 'model', 'gesture_transformer.pt')
-SF_PATH     = os.path.join(BASE, 'soundfonts', 'FluidR3_GM.sf2')
-CAM_CONFIG  = os.path.join(BASE, 'camera_config.txt')
-SEQ_LEN     = 30
-
-# MIDI Program numbers (General MIDI)
-INSTRUMENTS = {
-    0: (24, 0,  "Acoustic Guitar"),   # chord=none
-    1: (24, 0,  "Acoustic Guitar"),   # chord=major
-    2: (48, 1,  "Strings"),           # chord=minor
-    3: (0,  2,  "Grand Piano"),       # chord=dominant
-}
-
-# Scale snap theo chord
-SCALES = {
-    0: [60,62,64,65,67,69,71,72],  # C major (default)
-    1: [60,62,64,65,67,69,71,72],  # C major
-    2: [60,62,63,65,67,68,70,72],  # C minor
-    3: [60,62,64,65,67,69,70,72],  # C dominant
-}
+BASE       = os.path.join(os.path.dirname(__file__), '..')
+MODEL_PATH = os.path.join(BASE, 'model', 'gesture_seq2seq.pt')
+SF_PATH    = os.path.join(BASE, 'soundfonts', 'FluidR3_GM.sf2')
+CAM_CONFIG = os.path.join(BASE, 'camera_config.txt')
+SEQ_LEN    = 30
+NOTE_OUT   = 16
+NOTE_DIM   = 3
 
 PITCH_MIN, PITCH_MAX = 60, 72
 VEL_MIN,   VEL_MAX   = 40, 127
 TEMPO_MIN, TEMPO_MAX = 80, 160
 
+CHORD_SCALES = {
+    0: [60,62,64,65,67,69,71,72],
+    1: [60,62,64,65,67,69,71,72],
+    2: [60,62,63,65,67,68,70,72],
+    3: [60,62,64,65,67,69,70,72],
+}
+INSTRUMENTS = {0:(24,"Guitar"), 1:(24,"Guitar"), 2:(48,"Strings"), 3:(0,"Piano")}
+CHORD_NAMES = {0:"None", 1:"Major", 2:"Minor", 3:"Dominant"}
+NOTE_NAMES  = {60:"C4",62:"D4",63:"Eb4",64:"E4",65:"F4",67:"G4",
+               68:"Ab4",69:"A4",70:"Bb4",71:"B4",72:"C5"}
+
 # ── Model ─────────────────────────────────────────────────────────────────
-class GestureTransformer(nn.Module):
-    def __init__(self, input_dim=126, d_model=128, nhead=4, num_layers=3, output_dim=6):
+class GestureEncoder(nn.Module):
+    def __init__(self, input_dim=126, d_model=128, nhead=4, num_layers=3):
         super().__init__()
         self.embed   = nn.Linear(input_dim, d_model)
         self.pos_enc = nn.Embedding(100, d_model)
-        encoder_layer = nn.TransformerEncoderLayer(
-            d_model=d_model, nhead=nhead,
-            dim_feedforward=256, dropout=0.0, batch_first=True
-        )
-        self.transformer = nn.TransformerEncoder(encoder_layer, num_layers=num_layers)
-        self.head = nn.Linear(d_model, output_dim)
+        enc_layer    = nn.TransformerEncoderLayer(d_model=d_model, nhead=nhead,
+            dim_feedforward=256, dropout=0.0, batch_first=True)
+        self.transformer = nn.TransformerEncoder(enc_layer, num_layers=num_layers)
 
     def forward(self, x):
         B, T, _ = x.shape
-        pos = torch.arange(T, device=x.device).unsqueeze(0)
-        x = self.embed(x) + self.pos_enc(pos)
-        x = self.transformer(x)
-        return self.head(x.mean(dim=1))
+        mask = torch.triu(torch.ones(T, T, device=x.device), diagonal=1).bool()
+        pos  = torch.arange(T, device=x.device).unsqueeze(0)
+        x    = self.embed(x) + self.pos_enc(pos)
+        return self.transformer(x, mask=mask)
+
+class MusicDecoder(nn.Module):
+    def __init__(self, note_dim=NOTE_DIM, d_model=128, nhead=4, num_layers=3):
+        super().__init__()
+        self.note_embed = nn.Linear(note_dim, d_model)
+        self.pos_enc    = nn.Embedding(100, d_model)
+        dec_layer       = nn.TransformerDecoderLayer(d_model=d_model, nhead=nhead,
+            dim_feedforward=256, dropout=0.0, batch_first=True)
+        self.transformer = nn.TransformerDecoder(dec_layer, num_layers=num_layers)
+        self.out_proj    = nn.Linear(d_model, note_dim)
+
+    def forward(self, tgt, memory):
+        B, T, _ = tgt.shape
+        mask = torch.triu(torch.ones(T, T, device=tgt.device), diagonal=1).bool()
+        pos  = torch.arange(T, device=tgt.device).unsqueeze(0)
+        tgt  = self.note_embed(tgt) + self.pos_enc(pos)
+        return self.out_proj(self.transformer(tgt, memory, tgt_mask=mask))
+
+class GestureSeq2Seq(nn.Module):
+    def __init__(self):
+        super().__init__()
+        self.encoder = GestureEncoder()
+        self.decoder = MusicDecoder()
+
+    def generate(self, src, seq_len=NOTE_OUT):
+        self.eval()
+        with torch.no_grad():
+            memory    = self.encoder(src)
+            generated = torch.zeros(1, 1, NOTE_DIM, device=src.device)
+            for _ in range(seq_len):
+                out       = self.decoder(generated, memory)
+                generated = torch.cat([generated, out[:,-1:,:]], dim=1)
+            return generated[:, 1:, :]
 
 def load_model():
-    ckpt = torch.load(MODEL_PATH, map_location='cpu', weights_only=False)
-    cfg  = ckpt['config']
-    model = GestureTransformer(**cfg)
+    ckpt  = torch.load(MODEL_PATH, map_location='cpu', weights_only=False)
+    model = GestureSeq2Seq()
     model.load_state_dict(ckpt['model_state'])
     model.eval()
     return model
-
-def decode_output(out):
-    """Chuyen tensor output ve gia tri thuc."""
-    out = out.squeeze().detach().numpy()
-    pitch    = float(out[0]) * (PITCH_MAX - PITCH_MIN) + PITCH_MIN
-    velocity = float(out[1]) * (VEL_MAX   - VEL_MIN)   + VEL_MIN
-    tempo    = float(out[2]) * (TEMPO_MAX - TEMPO_MIN)  + TEMPO_MIN
-    chord    = int(round(float(out[3]) * 3))
-    rp       = float(torch.sigmoid(torch.tensor(out[4]))) > 0.5
-    lp       = float(torch.sigmoid(torch.tensor(out[5]))) > 0.5
-    return (
-        int(np.clip(pitch, PITCH_MIN, PITCH_MAX)),
-        int(np.clip(velocity, VEL_MIN, VEL_MAX)),
-        int(np.clip(tempo, TEMPO_MIN, TEMPO_MAX)),
-        int(np.clip(chord, 0, 3)),
-        bool(rp), bool(lp)
-    )
-
-def snap_to_scale(pitch, chord):
-    """Snap pitch ve scale dung theo chord."""
-    scale = SCALES[chord]
-    return min(scale, key=lambda p: abs(p - pitch))
 
 # ── FluidSynth ────────────────────────────────────────────────────────────
 class MusicEngine:
@@ -97,46 +100,57 @@ class MusicEngine:
         self.fs   = fluidsynth.Synth(gain=0.8)
         self.fs.start(driver='wasapi')
         self.sfid = self.fs.sfload(SF_PATH)
-        # Khoi tao 3 channel
-        for ch in range(3):
+        for ch in range(4):
             self.fs.program_select(ch, self.sfid, 0, 24)
-        self.current_note  = {ch: None for ch in range(3)}
-        self.current_chord = 0
-        self.current_prog  = {0: 24, 1: 48, 2: 0}
+        self.playing_notes = {}
         self.lock = threading.Lock()
+        self.seq_thread = None
+        self.running    = False
 
-    def set_instrument(self, chord):
-        """Doi nhac cu theo chord type (Huong D)."""
-        prog, ch, name = INSTRUMENTS[chord]
-        if chord != self.current_chord:
-            self.fs.program_select(ch, self.sfid, 0, prog)
-            self.current_chord = chord
-        return ch, name
+    def play_sequence(self, notes, chord, tempo):
+        """Phat chuoi 16 not tren background thread."""
+        self.running = False
+        if self.seq_thread and self.seq_thread.is_alive():
+            self.seq_thread.join(timeout=0.5)
 
-    def play_note(self, pitch, velocity, chord):
-        """Phat note tren channel tuong ung (Huong C)."""
+        prog, inst = INSTRUMENTS[chord]
+        self.fs.program_select(0, self.sfid, 0, prog)
+        self.running    = True
+        self.seq_thread = threading.Thread(
+            target=self._play_loop, args=(notes, chord, tempo), daemon=True)
+        self.seq_thread.start()
+        return inst
+
+    def _play_loop(self, notes, chord, tempo):
+        scale = CHORD_SCALES[chord]
+        beat  = 60.0 / max(tempo, 60)
+        for note in notes:
+            if not self.running: break
+            p_raw = float(note[0]) * (PITCH_MAX - PITCH_MIN) + PITCH_MIN
+            v_raw = float(note[1]) * (VEL_MIN   - VEL_MIN  ) + VEL_MIN  # fix below
+            d_raw = float(note[2])
+            pitch    = int(np.clip(p_raw, PITCH_MIN, PITCH_MAX))
+            velocity = int(np.clip(float(note[1]) * (VEL_MAX-VEL_MIN) + VEL_MIN, VEL_MIN, VEL_MAX))
+            duration = float(np.clip(d_raw * beat * 2, 0.1, beat * 2))
+            # Snap to scale
+            pitch = min(scale, key=lambda s: abs(s - pitch))
+            with self.lock:
+                if 0 in self.playing_notes:
+                    self.fs.noteoff(0, self.playing_notes[0])
+                self.fs.noteon(0, pitch, velocity)
+                self.playing_notes[0] = pitch
+            time.sleep(duration)
         with self.lock:
-            ch, name = self.set_instrument(chord)
-            snapped = snap_to_scale(pitch, chord)
-            # Tat note cu neu khac note moi
-            if self.current_note[ch] is not None and self.current_note[ch] != snapped:
-                self.fs.noteoff(ch, self.current_note[ch])
-            # Phat note moi
-            if self.current_note[ch] != snapped:
-                self.fs.noteon(ch, snapped, velocity)
-                self.current_note[ch] = snapped
-            return snapped, ch, name
-
-    def stop_note(self, ch=None):
-        with self.lock:
-            channels = range(3) if ch is None else [ch]
-            for c in channels:
-                if self.current_note[c] is not None:
-                    self.fs.noteoff(c, self.current_note[c])
-                    self.current_note[c] = None
+            if 0 in self.playing_notes:
+                self.fs.noteoff(0, self.playing_notes[0])
+                del self.playing_notes[0]
 
     def stop_all(self):
-        self.stop_note()
+        self.running = False
+        with self.lock:
+            for ch, note in self.playing_notes.items():
+                self.fs.noteoff(ch, note)
+            self.playing_notes.clear()
 
     def delete(self):
         self.stop_all()
@@ -148,117 +162,108 @@ mp_draw  = mp.solutions.drawing_utils
 hands    = mp_hands.Hands(max_num_hands=2, min_detection_confidence=0.7,
                           min_tracking_confidence=0.5)
 
+def load_cam():
+    try: return int(open(CAM_CONFIG).read().strip())
+    except: return 0
+
 def get_hand_dict(results):
     d = {}
     if not results.multi_hand_landmarks:
         return d
     for lms, info in zip(results.multi_hand_landmarks, results.multi_handedness):
-        label = info.classification[0].label
-        d[label] = [(lm.x, lm.y, lm.z) for lm in lms.landmark]
+        d[info.classification[0].label] = [(lm.x,lm.y,lm.z) for lm in lms.landmark]
     return d
 
+def normalize_landmarks(lms):
+    wrist = np.array(lms[0])
+    scale = np.linalg.norm(np.array(lms[9]) - wrist) + 1e-6
+    return [((x-wrist[0])/scale,(y-wrist[1])/scale,(z-wrist[2])/scale) for x,y,z in lms]
+
 def build_feature(hand_dict):
-    """Tao vector 126 features tu hand_dict."""
-    def flat(lms): return [v for lm in lms for v in lm]
-    r = flat(hand_dict['Right']) if 'Right' in hand_dict else [0.0] * 63
-    l = flat(hand_dict['Left'])  if 'Left'  in hand_dict else [0.0] * 63
+    ZEROS = [0.0] * 63
+    r = [v for lm in normalize_landmarks(hand_dict['Right']) for v in lm] if 'Right' in hand_dict else ZEROS
+    l = [v for lm in normalize_landmarks(hand_dict['Left'])  for v in lm] if 'Left'  in hand_dict else ZEROS
     return r + l
 
+def get_chord(hand_dict):
+    CHORD_MAP = [1,1,3,2,2]
+    if 'Left' not in hand_dict: return 0
+    wy  = hand_dict['Left'][0][1]
+    row = min(int(wy * len(CHORD_MAP)), len(CHORD_MAP)-1)
+    return CHORD_MAP[row]
+
 # ── UI ────────────────────────────────────────────────────────────────────
-CHORD_NAMES = {0: 'None', 1: 'Major', 2: 'Minor', 3: 'Dominant'}
-NOTE_NAMES  = {60:'C4',62:'D4',63:'Eb4',64:'E4',65:'F4',67:'G4',
-               68:'Ab4',69:'A4',70:'Bb4',71:'B4',72:'C5'}
-
-def draw_ui(frame, pitch, velocity, tempo, chord, inst_name,
-            rp, lp, buf_len, note_playing):
+def draw_ui(frame, notes_playing, chord, inst, rp, lp, buf_len, tempo):
     h, w = frame.shape[:2]
+    color = (0,200,255) if rp else (100,100,100)
+    cv2.rectangle(frame, (0,0),(w-1,h-1), color, 3)
 
-    # Vung pitch ben trai
-    note_names = ['C5','A4','F4','D4','C4']
-    for i, name in enumerate(note_names):
-        y = int(h * i / len(note_names))
-        cv2.line(frame, (0, y), (45, y), (150,150,255), 1)
-        cv2.putText(frame, name, (2, y+15), cv2.FONT_HERSHEY_SIMPLEX, 0.42, (150,150,255), 1)
-
-    # Vung chord ben phai
-    chord_zones = [('Major',(0,200,100)),('Major',(0,200,100)),
-                   ('Dom',(0,180,255)),('Minor',(200,80,255)),('Minor',(200,80,255))]
-    for i,(name,c) in enumerate(chord_zones):
-        y = int(h * i / len(chord_zones))
-        cv2.line(frame, (w-55,y),(w,y), c, 1)
-        cv2.putText(frame, name, (w-52,y+14), cv2.FONT_HERSHEY_SIMPLEX, 0.36, c, 1)
-
-    # Duong vung ly tuong
-    cv2.line(frame, (55,int(h*0.2)),(w-60,int(h*0.2)),(0,255,200),1)
-    cv2.line(frame, (55,int(h*0.8)),(w-60,int(h*0.8)),(0,255,200),1)
-
-    # Header
-    cv2.rectangle(frame, (0,0),(w,58),(0,0,0),-1)
-    cv2.putText(frame, 'GestuRhythm - Real-time', (10,22),
-                cv2.FONT_HERSHEY_SIMPLEX, 0.7, (0,255,200), 2)
-    cv2.putText(frame, f'Instrument: {inst_name}  |  Chord: {CHORD_NAMES[chord]}',
+    cv2.rectangle(frame,(0,0),(w,55),(0,0,0),-1)
+    cv2.putText(frame, f'GestuRhythm  |  {inst}  |  {CHORD_NAMES[chord]}  |  {tempo}BPM',
+                (10,22), cv2.FONT_HERSHEY_SIMPLEX, 0.6, color, 2)
+    cv2.putText(frame, f'TAY PHAI[{"ON" if rp else "OFF"}]   TAY TRAI[{"ON" if lp else "OFF"}]',
                 (10,46), cv2.FONT_HERSHEY_SIMPLEX, 0.5, (200,200,200), 1)
 
-    # Thong so
-    rc = (0,220,80) if rp else (80,80,80)
-    lc = (0,180,255) if lp else (80,80,80)
-    cv2.putText(frame, f'R[{"ON" if rp else "OFF"}] P:{NOTE_NAMES.get(pitch,pitch)} V:{velocity} T:{tempo}',
-                (w-280,80), cv2.FONT_HERSHEY_SIMPLEX, 0.5, rc, 2)
-    cv2.putText(frame, f'L[{"ON" if lp else "OFF"}] Chord:{CHORD_NAMES[chord]}',
-                (w-280,102), cv2.FONT_HERSHEY_SIMPLEX, 0.5, lc, 2)
+    # Piano roll - hien thi 16 not dang phat
+    if notes_playing is not None:
+        roll_x, roll_y = 10, h - 80
+        roll_w = w - 20
+        note_w = roll_w // NOTE_OUT
+        for i, note in enumerate(notes_playing):
+            p = int(note[0] * (PITCH_MAX-PITCH_MIN) + PITCH_MIN)
+            v = note[1]
+            bar_h = int(v * 30) + 5
+            py    = int((1 - (p-PITCH_MIN)/(PITCH_MAX-PITCH_MIN)) * 25) + roll_y
+            c     = (0, int(v*255), int((1-v)*255))
+            cv2.rectangle(frame, (roll_x + i*note_w, py),
+                          (roll_x + (i+1)*note_w - 2, py+bar_h), c, -1)
+        cv2.putText(frame, 'PIANO ROLL', (10, roll_y-5),
+                    cv2.FONT_HERSHEY_SIMPLEX, 0.4, (180,180,180), 1)
 
-    # Note dang phat (nhip nhay)
-    if note_playing:
-        alpha = int(180 + 75 * abs(np.sin(time.time() * 6)))
-        color = (0, alpha, 100)
-        cv2.putText(frame, f'NOTE: {NOTE_NAMES.get(note_playing, note_playing)}',
-                    (w//2-60, h//2), cv2.FONT_HERSHEY_SIMPLEX, 1.2, color, 3)
-
-    # Buffer bar
+    # Buffer
     bw = int((w-10) * buf_len / SEQ_LEN)
     cv2.rectangle(frame,(5,h-25),(w-5,h-5),(40,40,40),-1)
     cv2.rectangle(frame,(5,h-25),(5+bw,h-5),(0,140,255),-1)
-    cv2.putText(frame,'Q=thoat  SPACE=stop note',(10,h-28),
+    cv2.putText(frame,'Q=thoat  SPACE=stop',(10,h-28),
                 cv2.FONT_HERSHEY_SIMPLEX, 0.4,(200,200,200),1)
+
+    # Chord zones ben phai
+    zone_h = h // 5
+    for i, (name, c) in enumerate([("MAJOR",(0,200,100)),("MAJOR",(0,200,100)),
+                                    ("DOM",(0,180,255)),("MINOR",(200,80,255)),("MINOR",(200,80,255))]):
+        y = i * zone_h
+        cv2.line(frame,(w-55,y),(w,y),c,1)
+        cv2.putText(frame,name,(w-52,y+14),cv2.FONT_HERSHEY_SIMPLEX,0.35,c,1)
 
 # ── Main ──────────────────────────────────────────────────────────────────
 def main():
-    print('Dang tai model...')
+    print('Loading model...')
     model = load_model()
-    print('Model OK')
+    print(f'Model loaded: {sum(p.numel() for p in model.parameters()):,} params')
 
-    print('Khoi dong FluidSynth...')
+    print('Starting FluidSynth...')
     engine = MusicEngine()
     print('FluidSynth OK')
 
-    try:
-        cam_idx = int(open(CAM_CONFIG).read().strip())
-    except Exception:
-        cam_idx = 0
-
-    cap = cv2.VideoCapture(cam_idx, cv2.CAP_MSMF)
+    cap = cv2.VideoCapture(load_cam(), cv2.CAP_MSMF)
     if not cap.isOpened():
-        print(f'Khong mo duoc camera {cam_idx}')
-        engine.delete()
-        return
+        print('Cannot open camera'); engine.delete(); return
 
-    frame_buffer = collections.deque(maxlen=SEQ_LEN)
-    last_pitch   = 60
-    note_playing = None
-    pitch = velocity = tempo = 60
-    chord = 0
-    rp = lp = False
-    inst_name = 'Acoustic Guitar'
+    frame_buffer  = collections.deque(maxlen=SEQ_LEN)
+    notes_playing = None
+    inst_name     = 'Guitar'
+    chord         = 0
+    tempo         = 120
+    rp = lp       = False
+    last_gen      = 0
 
-    print('Bat dau! Dua tay vao khung hinh.')
-    print('Q = thoat | SPACE = stop note')
+    print('Ready! Move your hands.')
+    print('Q = quit | SPACE = stop notes')
 
     while cap.isOpened():
         ret, frame = cap.read()
-        if not ret:
-            break
+        if not ret: break
         frame = cv2.flip(frame, 1)
-        now = time.time()
 
         rgb     = cv2.cvtColor(frame, cv2.COLOR_BGR2RGB)
         results = hands.process(rgb)
@@ -268,38 +273,38 @@ def main():
             for lms in results.multi_hand_landmarks:
                 mp_draw.draw_landmarks(frame, lms, mp_hands.HAND_CONNECTIONS)
 
+        rp    = 'Right' in hand_dict
+        lp    = 'Left'  in hand_dict
+        chord = get_chord(hand_dict)
+
         feat = build_feature(hand_dict)
         frame_buffer.append(feat)
 
-        if len(frame_buffer) == SEQ_LEN:
-            seq = torch.tensor([list(frame_buffer)], dtype=torch.float32)
-            with torch.no_grad():
-                out = model(seq)
-            pitch, velocity, tempo, chord, rp, lp = decode_output(out)
+        now = time.time()
+        # Sinh chuoi not moi moi 1 giay neu co tay phai
+        if len(frame_buffer) == SEQ_LEN and rp and (now - last_gen) > 1.0:
+            seq    = torch.tensor([list(frame_buffer)], dtype=torch.float32)
+            notes  = model.generate(seq)[0].numpy()  # (16, 3)
+            # Tinh tempo tu velocity trung binh
+            tempo  = int(np.clip(float(notes[:,1].mean()) * (TEMPO_MAX-TEMPO_MIN) + TEMPO_MIN,
+                                 TEMPO_MIN, TEMPO_MAX))
+            inst_name = engine.play_sequence(notes, chord, tempo)
+            notes_playing = notes
+            last_gen      = now
+        elif not rp:
+            engine.stop_all()
+            notes_playing = None
 
-            if rp:
-                snapped, ch, inst_name = engine.play_note(pitch, velocity, chord)
-                note_playing = snapped
-                last_pitch   = snapped
-            else:
-                engine.stop_all()
-                note_playing = None
-
-        draw_ui(frame, pitch, velocity, tempo, chord, inst_name,
-                rp, lp, len(frame_buffer), note_playing)
-
+        draw_ui(frame, notes_playing, chord, inst_name, rp, lp, len(frame_buffer), tempo)
         cv2.imshow('GestuRhythm', frame)
         key = cv2.waitKey(1) & 0xFF
-        if key == ord('q'):
-            break
-        elif key == ord(' '):
-            engine.stop_all()
-            note_playing = None
+        if key == ord('q'): break
+        elif key == ord(' '): engine.stop_all(); notes_playing = None
 
     cap.release()
     cv2.destroyAllWindows()
     engine.delete()
-    print('Thoat.')
+    print('Done.')
 
 if __name__ == '__main__':
     main()
