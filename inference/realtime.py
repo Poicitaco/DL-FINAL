@@ -184,6 +184,8 @@ class MusicEngine:
 
     def set_backing_chord(self, chord):
         self._pending_chord = chord
+
+    def stop_all(self):
         self.running = False
         with self.lock:
             for ch, note in self.playing_notes.items():
@@ -192,6 +194,7 @@ class MusicEngine:
 
     def delete(self):
         self.stop_all()
+        self.stop_backing()
         self.fs.delete()
 
 # ── MediaPipe ─────────────────────────────────────────────────────────────
