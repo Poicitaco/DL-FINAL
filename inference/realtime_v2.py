@@ -305,51 +305,63 @@ def get_emotion_label(val, aro):
 
 def draw_ui(frame, valence, arousal, inst, scale, tempo, notes, active):
     h, w = frame.shape[:2]
-    color = (0,220,80) if active else (80,80,80)
+    color = (0,220,80) if active else (60,60,60)
 
+    # Vien mau theo trang thai
     cv2.rectangle(frame,(0,0),(w-1,h-1),color,3)
-    cv2.rectangle(frame,(0,0),(w,60),(0,0,0),-1)
-    cv2.putText(frame,'GestuRhythm v2',(10,22),cv2.FONT_HERSHEY_SIMPLEX,0.8,(0,220,180),2)
+
+    # Header
+    cv2.rectangle(frame,(0,0),(w,65),(0,0,0),-1)
+    cv2.putText(frame,'GestuRhythm v2',(12,28),
+                cv2.FONT_HERSHEY_SIMPLEX,0.9,(0,220,180),2)
     emo_label = get_emotion_label(valence, arousal)
-    cv2.putText(frame,f'{emo_label}  |  {inst}  |  {scale}  |  {tempo}BPM',
-                (10,48),cv2.FONT_HERSHEY_SIMPLEX,0.48,color,1)
+    cv2.putText(frame,f'{emo_label}  |  {inst}  |  {tempo} BPM',
+                (12,52),cv2.FONT_HERSHEY_SIMPLEX,0.5,color,1)
 
-    # Chi so lon goc tren phai
-    cv2.rectangle(frame, (w-220, 0), (w, 110), (0,0,0), -1)
-    val_color = (0,220,80) if valence > 0.2 else ((80,80,255) if valence < -0.2 else (180,180,180))
-    aro_color = (0,220,255) if arousal > 0.2 else ((255,120,0) if arousal < -0.2 else (180,180,180))
-    cv2.putText(frame, f'VAL {valence:+.2f}', (w-210, 35),
-                cv2.FONT_HERSHEY_SIMPLEX, 0.9, val_color, 2)
-    cv2.putText(frame, f'ARO {arousal:+.2f}', (w-210, 75),
-                cv2.FONT_HERSHEY_SIMPLEX, 0.9, aro_color, 2)
-    cv2.putText(frame, get_emotion_label(valence, arousal), (w-210, 102),
-                cv2.FONT_HERSHEY_SIMPLEX, 0.38, (200,200,200), 1)
-    # Emotion meter (goc duoi phai)
+    # Chi so VAL/ARO lon goc tren phai
+    cv2.rectangle(frame,(w-230,0),(w,115),(0,0,0),-1)
+    val_color = (0,220,80)  if valence >  0.2 else ((80,80,255) if valence < -0.2 else (180,180,180))
+    aro_color = (0,220,255) if arousal >  0.2 else ((255,120,0) if arousal < -0.2 else (180,180,180))
+    cv2.putText(frame,f'VAL {valence:+.2f}',(w-220,38),
+                cv2.FONT_HERSHEY_SIMPLEX,0.95,val_color,2)
+    cv2.putText(frame,f'ARO {arousal:+.2f}',(w-220,80),
+                cv2.FONT_HERSHEY_SIMPLEX,0.95,aro_color,2)
+    cv2.putText(frame,f'Scale: {scale}',(w-220,108),
+                cv2.FONT_HERSHEY_SIMPLEX,0.4,(160,160,160),1)
+
+    # Emotion meter goc duoi phai (dot nhap nhay)
     cx, cy, r = w-70, h-70, 45
-    cv2.circle(frame,(cx,cy),r,(40,40,40),-1)
-    cv2.circle(frame,(cx,cy),r,color,2)
-    cv2.line(frame,(cx-r,cy),(cx+r,cy),(80,80,80),1)
-    cv2.line(frame,(cx,cy-r),(cx,cy+r),(80,80,80),1)
-    px = int(cx + np.clip(valence,-.95,.95)*(r-8))
-    py = int(cy - np.clip(arousal,-.95,.95)*(r-8))
-    cv2.circle(frame,(px,py),8,color,-1)
-    cv2.putText(frame,f'V:{valence:+.2f}',(cx-r-5,cy+r+15),cv2.FONT_HERSHEY_SIMPLEX,0.35,(150,150,150),1)
-    cv2.putText(frame,f'A:{arousal:+.2f}',(cx-r-5,cy+r+28),cv2.FONT_HERSHEY_SIMPLEX,0.35,(150,150,150),1)
+    cv2.circle(frame,(cx,cy),r,(30,30,30),-1)
+    cv2.circle(frame,(cx,cy),r,(80,80,80),1)
+    cv2.line(frame,(cx-r,cy),(cx+r,cy),(60,60,60),1)
+    cv2.line(frame,(cx,cy-r),(cx,cy+r),(60,60,60),1)
+    pulse = int(6 + 3 * abs(np.sin(time.time() * 4)))
+    px = int(cx + np.clip(valence,-.9,.9)*(r-8))
+    py = int(cy - np.clip(arousal,-.9,.9)*(r-8))
+    cv2.circle(frame,(px,py),pulse,color,-1)
+    cv2.putText(frame,'V',(cx+r-12,cy-4),cv2.FONT_HERSHEY_SIMPLEX,0.3,(80,80,80),1)
+    cv2.putText(frame,'A',(cx-4,cy-r+10),cv2.FONT_HERSHEY_SIMPLEX,0.3,(80,80,80),1)
 
-    # Piano roll
-    if notes:
-        rw = (w-20) // len(notes)
+    # Piano roll mau sac
+    if notes and active:
+        roll_y = h - 55
+        rw = max(1,(w-20) // len(notes))
         for i, n in enumerate(notes):
-            bar_h = int((n - 48) / 36 * 30) + 5
-            c     = (0, int(min(n/127*255,255)), int(255-n/127*255))
-            cv2.rectangle(frame,(10+i*rw, h-30),(10+(i+1)*rw-2, h-30+bar_h), c, -1)
-        cv2.putText(frame,'PIANO ROLL',(10,h-34),cv2.FONT_HERSHEY_SIMPLEX,0.38,(160,160,160),1)
+            bar_h = max(3, int((n-48)/36*28))
+            ratio = (n-48)/36
+            c = (int(255*(1-ratio)), int(180*ratio), int(255*ratio))
+            cv2.rectangle(frame,(10+i*rw,roll_y-bar_h),(10+(i+1)*rw-1,roll_y),c,-1)
+        cv2.putText(frame,'PIANO ROLL',(10,h-62),
+                    cv2.FONT_HERSHEY_SIMPLEX,0.38,(120,120,120),1)
 
     if not active:
-        cv2.putText(frame,'Dua tay vao khung hinh...',
-                    (w//2-150,h//2),cv2.FONT_HERSHEY_SIMPLEX,0.7,(100,100,100),2)
+        ov = frame.copy()
+        cv2.putText(ov,'Dua tay vao khung hinh...',
+                    (w//2-180,h//2),cv2.FONT_HERSHEY_SIMPLEX,0.75,(80,80,80),2)
+        cv2.addWeighted(ov,0.7,frame,0.3,0,frame)
 
-    cv2.putText(frame,'Q=thoat  SPACE=stop',(10,h-5),cv2.FONT_HERSHEY_SIMPLEX,0.4,(160,160,160),1)
+    cv2.putText(frame,'Q = thoat  |  SPACE = dung nhac',
+                (10,h-8),cv2.FONT_HERSHEY_SIMPLEX,0.4,(100,100,100),1)
 
 # ── Main ──────────────────────────────────────────────────────────────────
 def main():
