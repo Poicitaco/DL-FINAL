@@ -550,8 +550,9 @@ def collect_mode(cap, writer, mode, mode_idx, person_id="unknown", player=None):
         now = time.time()
 
         if not paused:
-            rgb = cv2.cvtColor(frame, cv2.COLOR_BGR2RGB)
-            results = hands.process(rgb)
+            # Xu ly MediaPipe tren frame CHUA flip - tranh nham Left/Right
+            rgb_orig = cv2.cvtColor(cv2.flip(frame, 1), cv2.COLOR_BGR2RGB)
+            results = hands.process(rgb_orig)
             hand_dict = get_hand_dict(results)
 
             # Vẽ landmarks lên frame

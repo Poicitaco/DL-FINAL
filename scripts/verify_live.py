@@ -44,7 +44,7 @@ while cap.isOpened():
     h, w = frame.shape[:2]
     now = time.time()
 
-    rgb = cv2.cvtColor(frame, cv2.COLOR_BGR2RGB)
+    rgb = cv2.cvtColor(cv2.flip(frame, 1), cv2.COLOR_BGR2RGB)
     results = hands.process(rgb)
     hand_dict = get_hand_dict(results)
 
