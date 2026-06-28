@@ -1,0 +1,32 @@
+# Python
+venv/
+__pycache__/
+*.pyc
+*.pyo
+
+# Data - qua lon, khong push
+data/raw/gesture_data.csv
+data/processed/sequences.npy
+data/processed/labels.npy
+data/processed/*.rar
+
+# Model weights - qua lon
+model/gesture_transformer.pt
+model/gesture_seq2seq.pt
+
+# FluidSynth & SoundFont - qua lon
+fluidsynth-v2.5.5-win10-x64-glib/
+fluidsynth-v2.5.5-win10-x64-glib.zip
+GeneralUser_GS_v2.0.3--doc_r6/
+GeneralUser_GS_v2.0.3--doc_r6.zip
+soundfonts/
+
+# DLLs
+inference/*.dll
+
+# Camera config local
+camera_config.txt
+
+# OS
+.DS_Store
+Thumbs.db
