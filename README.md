@@ -61,12 +61,25 @@ python scripts/collect_data_v2.py  # thu data
 | 6 | NONE       | Khong tay            | De tay xuong, KHONG co tay trong khung hinh |
 
 ### Luu y khi thu
+- **Chi can 1 tay** (tay thuan) — khong can dung ca 2 tay
+- **Nua than tren** trong khung hinh — MediaPipe bat dau tu vai tro xuong
 - Mo tay (khong nam), long ban tay huong vao camera
-- Cam camera cach 50-80cm
-- Giu tay trong 2 duong xanh
+- Cam camera cach 50-70cm, thay ro tu vai den ngon tay
+- Giu tay trong 2 duong xanh tren man hinh
 - **NGHE NHAC NEN va DI CHUYEN TAY THEO CAM XUC CUA NHAC**
 - Moi che do tu dung khi du 150 samples, nhan SPACE sang che do tiep
 - Nhan Q de thoat (data da thu van duoc luu)
+
+### Huong dan cu the tung che do
+
+| # | Ten | Lam gi cu the |
+|---|-----|---------------|
+| 1 | HAPPY_HIGH | Tay giu len cao, vay qua lai NHANH va RONG — nhu dang co vu |
+| 2 | HAPPY_LOW  | Tay di chuyen ngang CHAM, bieu do nho — nhu dang vuot ve |
+| 3 | SAD_HIGH   | Tay de THAP, di chuyen GAP va co rut lai — nhu dang bop tay |
+| 4 | SAD_LOW    | Tay de THAP NHAT, di chuyen RAT CHAM — nhu tay nang khong nhac len |
+| 5 | NEUTRAL    | Tay o GIUA man hinh, di chuyen DEU DANG — nhu dang go ban phim |
+| 6 | NONE       | Ha tay xuong, KHONG co tay trong khung hinh |
 
 ### Upload CSV len Drive
 Sau khi thu xong, upload file `data/raw/gesture_data_v2.csv` len Google Drive.
