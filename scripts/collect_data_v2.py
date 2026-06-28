@@ -338,8 +338,10 @@ def main():
                             valid = sum(1 for r in frame_buffer
                                         if r[5+63+63] == 0.0 and r[5] == 0.0) >= 25
                         else:
+                            # Co tay: it nhat 10/30 frame co bat ki feature nao khac 0
                             valid = sum(1 for r in frame_buffer
-                                        if any(v != 0.0 for v in r[5:5+63])) >= 15
+                                        if any(v != 0.0 for v in r[5:5+63]) or
+                                           any(v != 0.0 for v in r[5+63:5+126])) >= 10
                         if valid:
                             for row in frame_buffer: writer.writerow(row)
                             sample_count += 1
