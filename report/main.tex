@@ -268,60 +268,179 @@ Scale mask được áp dụng trước softmax để đảm bảo nốt nhạc 
 \chapter{Dữ Liệu}
 \label{chap:data}
 
+\section{Tổng Quan Dữ Liệu}
+
+Dữ liệu trong dự án này gồm hai phần độc lập:
+(1) Dataset cử chỉ -- cảm xúc tự thu thập, dùng để huấn luyện Gesture Emotion Encoder và Conditioned Decoder;
+(2) Lakh MIDI Clean Dataset, dùng để huấn luyện Music Prior.
+
+% ─────────────────────────────────────────────────────────────────────────
 \section{Dataset Cử Chỉ -- Cảm Xúc}
+% ─────────────────────────────────────────────────────────────────────────
 
-\subsection{Thiết Kế Thu Thập}
+\subsection{Tại Sao Tự Thu Thập?}
 
-Nhóm thiết kế 6 chế độ cảm xúc dựa trên mô hình Valence-Arousal:
+Không có dataset chuẩn nào chứa cặp dữ liệu (chuỗi landmarks cơ thể -- nhãn cảm xúc âm nhạc).
+Các dataset cảm xúc sẵn có (như DEAP, MAHNOB-HCI) sử dụng tín hiệu sinh lý (EEG, GSR),
+không phù hợp với bài toán điều khiển âm nhạc bằng cử chỉ.
+Do đó, nhóm thiết kế và thu thập dataset riêng.
+
+\subsection{Thiết Kế Không Gian Cảm Xúc}
+
+Nhóm sử dụng mô hình Valence-Arousal~\cite{russell1980} --- khung biểu diễn cảm xúc
+2 chiều được chấp nhận rộng rãi trong nghiên cứu âm nhạc tình cảm:
+\begin{itemize}
+  \item \textbf{Valence} ($v \in [-1, +1]$): mức độ tích cực của cảm xúc (buồn $\leftrightarrow$ vui).
+  \item \textbf{Arousal} ($a \in [-1, +1]$): mức độ năng lượng (thư giãn $\leftrightarrow$ kích động).
+\end{itemize}
+
+\begin{figure}[H]
+  \centering
+  \includegraphics[width=0.85\textwidth]{images/emotion_space_2d.png}
+  \caption{Phân bố toàn bộ dataset trong không gian Valence-Arousal. Mỗi màu đại diện cho một chế độ cảm xúc.}
+  \label{fig:emotion_space}
+\end{figure}
+
+\subsection{Thiết Kế 6 Chế Độ Thu Thập}
+
+Nhóm chia không gian Valence-Arousal thành 6 vùng đặc trưng:
 
 \begin{table}[H]
   \centering
-  \caption{6 chế độ cảm xúc trong dataset}
+  \caption{6 chế độ cảm xúc và nhãn Valence-Arousal tương ứng}
   \label{tab:modes}
   \begin{tabular}{clccl}
     \toprule
     \textbf{ID} & \textbf{Tên} & \textbf{Valence} & \textbf{Arousal} & \textbf{Cử chỉ đặc trưng} \\
     \midrule
-    0 & HAPPY\_HIGH   & +1.0 & +1.0 & Tay nhanh, rộng, lên cao \\
-    1 & HAPPY\_LOW    & +1.0 & -0.5 & Tay chậm, tròn, nhẹ \\
-    2 & SAD\_HIGH     & -1.0 & +0.8 & Tay thấp, giật cục, co rút \\
-    3 & SAD\_LOW      & -1.0 & -1.0 & Tay thấp nhất, rất chậm \\
-    4 & NEUTRAL       &  0.0 &  0.0 & Tay giữa, di chuyển đều \\
-    5 & NONE          &  0.0 &  0.0 & Không có tay \\
+    0 & HAPPY\_HIGH   & $+1.0$ & $+1.0$ & Tay nhanh, rộng, lên cao (như cổ vũ) \\
+    1 & HAPPY\_LOW    & $+1.0$ & $-0.5$ & Tay chậm, tròn, nhẹ (như đung đưa)  \\
+    2 & SAD\_HIGH     & $-1.0$ & $+0.8$ & Tay thấp, giật cục (như bóp tay)    \\
+    3 & SAD\_LOW      & $-1.0$ & $-1.0$ & Tay thấp nhất, rất chậm, nặng nề    \\
+    4 & NEUTRAL       &  $0.0$ &  $0.0$ & Tay giữa màn hình, di chuyển đều    \\
+    5 & NONE          &  $0.0$ &  $0.0$ & Không có tay trong khung hình       \\
     \bottomrule
   \end{tabular}
 \end{table}
+
+\subsection{Quy Trình Thu Thập}
+
+Mỗi người thu thập trải qua quy trình sau cho từng chế độ:
+\begin{enumerate}
+  \item Xem màn hình giới thiệu chế độ và hướng dẫn cử chỉ.
+  \item Nhấn SPACE --- đếm ngược 3-2-1.
+  \item Nghe nhạc nền phát ra (được thiết kế theo cảm xúc của chế độ) và \textbf{di chuyển tay tự nhiên theo cảm xúc của nhạc}.
+  \item Hệ thống tự động lưu sample khi đủ 30 frame có landmarks hợp lệ.
+  \item Hoàn thành khi đạt 150 samples cho chế độ đó.
+\end{enumerate}
+
+\textit{Lý do phát nhạc nền khi thu:} Kích thích cảm xúc thật của người thu,
+tạo chuyển động tay tự nhiên hơn so với diễn xuất theo hướng dẫn chữ.
+
+\subsection{Đặc Trưng Đầu Vào}
+
+MediaPipe Holistic trích xuất 3 nhóm điểm mốc:
+\begin{itemize}
+  \item 21 điểm bàn tay phải $\times$ 3 tọa độ = 63 features
+  \item 21 điểm bàn tay trái $\times$ 3 tọa độ = 63 features
+  \item 33 điểm toàn thân (pose) $\times$ 3 tọa độ = 99 features
+\end{itemize}
+Tổng: \textbf{225 features mỗi frame}. Tất cả được normalize về tọa độ tương đối
+(gốc = điểm cổ tay/hông, scale = khoảng cách max-min) để bất biến với khoảng cách camera và tầm vóc người dùng.
+
+\begin{figure}[H]
+  \centering
+  \includegraphics[width=\textwidth]{images/gesture_sequences.png}
+  \caption{Ví dụ 5 chuỗi cử chỉ từ 5 chế độ khác nhau. Trục X = frame (0--29), trục Y = giá trị trung bình landmarks.}
+  \label{fig:sequences}
+\end{figure}
 
 \subsection{Thống Kê Dataset}
 
 \begin{table}[H]
   \centering
   \caption{Thống kê dataset cử chỉ -- cảm xúc}
-  \label{tab:dataset}
+  \label{tab:dataset_stats}
   \begin{tabular}{lc}
     \toprule
     \textbf{Thuộc tính} & \textbf{Giá trị} \\
     \midrule
-    Số người thu thập & 2 (A, C) \\
-    Tổng số mẫu & 1853 \\
-    Số mẫu mỗi chế độ & $\approx 150$ \\
-    Số frame mỗi mẫu & 30 ($\approx$1 giây) \\
+    Số người thu thập    & 2 (A, C) \\
+    Tổng số mẫu          & 1853 \\
+    Số mẫu mỗi chế độ   & $\approx 150$ \\
+    Số frame mỗi mẫu     & 30 ($\approx$1 giây) \\
     Số features mỗi frame & 225 \\
+    Tổng frames          & 55.590 \\
     \bottomrule
   \end{tabular}
 \end{table}
 
 \begin{figure}[H]
   \centering
-  \includegraphics[width=\textwidth]{images/dataset_analysis.png}
-  \caption{Phân tích phân bố dữ liệu thu thập}
-  \label{fig:dataset}
+  \includegraphics[width=\textwidth]{images/emotion_distribution.png}
+  \caption{Phân bố Valence và Arousal theo từng chế độ. Các chế độ phân tách rõ trong không gian 2D.}
+  \label{fig:emotion_dist}
 \end{figure}
 
-\section{Lakh MIDI Dataset}
+\begin{figure}[H]
+  \centering
+  \includegraphics[width=\textwidth]{images/mode_comparison.png}
+  \caption{So sánh giá trị trung bình của các landmarks đặc trưng giữa 6 chế độ. HAPPY\_HIGH có giá trị cao nhất (tay lên cao), SAD\_LOW có giá trị thấp nhất.}
+  \label{fig:mode_compare}
+\end{figure}
 
-Music Prior được huấn luyện trên 5000 bản nhạc từ Lakh MIDI Clean Dataset~\cite{raffel2016},
-bao gồm nhiều thể loại nhạc pop, rock, jazz, classical.
+\subsection{Phân Tích Chất Lượng Dữ Liệu}
+
+\begin{figure}[H]
+  \centering
+  \includegraphics[width=\textwidth]{images/data_quality.png}
+  \caption{Phân tích chất lượng dữ liệu: tỉ lệ missing values, phân bố outliers, và độ phủ frame.}
+  \label{fig:data_quality}
+\end{figure}
+
+\begin{figure}[H]
+  \centering
+  \includegraphics[width=\textwidth]{images/landmark_heatmap.png}
+  \caption{Heatmap tương quan giữa các landmarks. Các điểm thuộc cùng ngón tay có tương quan cao (vùng đỏ).}
+  \label{fig:heatmap}
+\end{figure}
+
+% ─────────────────────────────────────────────────────────────────────────
+\section{Lakh MIDI Clean Dataset}
+% ─────────────────────────────────────────────────────────────────────────
+
+\subsection{Tại Sao Dùng MIDI Thật?}
+
+Để Music Prior học được ngữ pháp âm nhạc thật sự, model cần được huấn luyện
+trên nhạc do con người sáng tác --- không phải các rule cứng hay sequences sinh bằng thuật toán.
+Lakh MIDI Clean Dataset~\cite{raffel2016} cung cấp 170.000 bản nhạc MIDI
+đã được làm sạch và phân loại.
+
+\subsection{Tiền Xử Lý}
+
+Từ dataset gốc, nhóm thực hiện:
+\begin{enumerate}
+  \item \textbf{Lấy mẫu ngẫu nhiên:} 5000 bản nhạc được chọn ngẫu nhiên.
+  \item \textbf{Trích xuất melody:} Track có nhiều nốt nhất trong mỗi bản được chọn làm melody.
+  \item \textbf{Token hóa:} Mỗi nốt MIDI (0--127) trở thành 1 token; khoảng lặng $> 0.2$s trở thành token REST (128).
+  \item \textbf{Sliding window:} Mỗi chuỗi melody được cắt thành các đoạn 128 token với bước nhảy 64.
+\end{enumerate}
+
+\begin{table}[H]
+  \centering
+  \caption{Thống kê Lakh MIDI sau tiền xử lý}
+  \label{tab:midi_stats}
+  \begin{tabular}{lc}
+    \toprule
+    \textbf{Thuộc tính} & \textbf{Giá trị} \\
+    \midrule
+    Số bản nhạc sử dụng      & 5.000 \\
+    Vocabulary size           & 130 (128 nốt + REST + PAD) \\
+    Chiều dài mỗi sequence   & 128 tokens \\
+    Số sequences huấn luyện  & [điền sau khi chạy] \\
+    \bottomrule
+  \end{tabular}
+\end{table}
 
 % ══════════════════════════════════════════════════════════════════════════
 % CHƯƠNG 5: KẾT QUẢ THỰC NGHIỆM
