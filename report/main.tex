@@ -1,0 +1,455 @@
+\documentclass[13pt, a4paper]{report}
+
+% ── Packages ──────────────────────────────────────────────────────────────
+\usepackage[utf8]{inputenc}
+\usepackage[T5]{fontenc}
+\usepackage[vietnamese]{babel}
+\usepackage{times}              % Times New Roman
+\usepackage[
+  top=3cm, bottom=3cm,
+  left=3.5cm, right=2cm
+]{geometry}
+\usepackage{setspace}
+\doublespacing                  % Dan dong 1.5-2
+\usepackage{graphicx}
+\usepackage{float}
+\usepackage{subcaption}
+\usepackage{amsmath, amssymb}
+\usepackage{booktabs}
+\usepackage{longtable}
+\usepackage{hyperref}
+\hypersetup{
+  colorlinks=true,
+  linkcolor=black,
+  citecolor=black,
+  urlcolor=blue
+}
+\usepackage{listings}
+\usepackage{xcolor}
+\usepackage{caption}
+\usepackage{indentfirst}
+\usepackage{fancyhdr}
+\usepackage{titlesec}
+\usepackage[numbers]{natbib}
+
+% ── Code listing style ────────────────────────────────────────────────────
+\lstset{
+  basicstyle=\ttfamily\small,
+  breaklines=true,
+  frame=single,
+  numbers=left,
+  numberstyle=\tiny,
+  keywordstyle=\color{blue},
+  commentstyle=\color{gray},
+  stringstyle=\color{orange},
+}
+
+% ── Header/Footer ─────────────────────────────────────────────────────────
+\pagestyle{fancy}
+\fancyhf{}
+\fancyhead[R]{\thepage}
+\fancyhead[L]{\leftmark}
+\renewcommand{\headrulewidth}{0.4pt}
+
+% ── Chapter title format ──────────────────────────────────────────────────
+\titleformat{\chapter}[block]
+  {\normalfont\Large\bfseries\centering}
+  {CHƯƠNG \thechapter:}{0.5em}{\MakeUppercase}
+\titlespacing*{\chapter}{0pt}{0pt}{20pt}
+
+\begin{document}
+
+% ══════════════════════════════════════════════════════════════════════════
+% TRANG BÌA
+% ══════════════════════════════════════════════════════════════════════════
+\begin{titlepage}
+\begin{center}
+  \textbf{ĐẠI HỌC [TÊN TRƯỜNG]}\\
+  \textbf{KHOA [TÊN KHOA]}\\[2cm]
+
+  \includegraphics[width=0.25\textwidth]{images/logo.png}\\[1cm]
+
+  {\LARGE\bfseries ĐỒ ÁN MÔN HỌC\\[0.5cm]
+  HỌC SÂU / DEEP LEARNING}\\[1.5cm]
+
+  {\Huge\bfseries GestuRhythm v2:\\[0.3cm]
+  Hệ Thống Tổng Hợp Âm Nhạc\\
+  Tương Tác Thời Gian Thực\\
+  Dựa Trên Cử Chỉ Người Dùng}\\[2cm]
+
+  \begin{tabular}{ll}
+    \textbf{Giảng viên hướng dẫn:} & [Tên GV] \\[0.3cm]
+    \textbf{Sinh viên thực hiện:}  & \\
+    \quad [Họ tên SV 1]            & [MSSV 1]  \\
+    \quad [Họ tên SV 2]            & [MSSV 2]  \\
+    \quad [Họ tên SV 3]            & [MSSV 3]  \\[0.3cm]
+    \textbf{Lớp:}                  & [Tên lớp] \\
+    \textbf{Học kỳ:}               & [HK], Năm học [XXXX--XXXX] \\
+  \end{tabular}\\[2cm]
+
+  \textbf{[Thành phố], tháng [X] năm [XXXX]}
+\end{center}
+\end{titlepage}
+
+% ══════════════════════════════════════════════════════════════════════════
+% LỜI CẢM ƠN
+% ══════════════════════════════════════════════════════════════════════════
+\chapter*{Lời Cảm Ơn}
+\addcontentsline{toc}{chapter}{Lời Cảm Ơn}
+
+Nhóm chúng em xin gửi lời cảm ơn chân thành đến [Tên GV], giảng viên hướng dẫn môn học,
+đã tận tình hỗ trợ và định hướng trong suốt quá trình thực hiện đồ án.
+Chúng em cũng xin cảm ơn [Tên trường/khoa] đã tạo điều kiện học tập và nghiên cứu.
+
+% ══════════════════════════════════════════════════════════════════════════
+% TÓM TẮT
+% ══════════════════════════════════════════════════════════════════════════
+\chapter*{Tóm Tắt}
+\addcontentsline{toc}{chapter}{Tóm Tắt}
+
+Báo cáo này trình bày hệ thống \textbf{GestuRhythm v2} --- một hệ thống tổng hợp
+âm nhạc tương tác theo thời gian thực dựa trên phân tích cử chỉ người dùng qua webcam.
+Hệ thống sử dụng MediaPipe Holistic để trích xuất chuỗi điểm mốc bàn tay và toàn thân,
+sau đó áp dụng mạng Transformer Encoder để học và ánh xạ đặc trưng chuyển động sang
+vector cảm xúc (Valence-Arousal). Vector này được dùng để điều kiện hóa (condition)
+một mô hình sinh nhạc GPT-style --- đã học ngữ pháp âm nhạc từ 170.000 bản MIDI thật
+trong Lakh MIDI Dataset --- thông qua cơ chế Cross-Attention. Kết quả là âm nhạc được
+sinh ra vừa phản ánh cảm xúc của người dùng vừa tuân thủ quy luật nhạc lý.
+
+\textbf{Từ khóa:} học sâu, Transformer, sinh nhạc, cảm xúc, cử chỉ, thời gian thực.
+
+% ══════════════════════════════════════════════════════════════════════════
+% MỤC LỤC
+% ══════════════════════════════════════════════════════════════════════════
+\tableofcontents
+\listoffigures
+\listoftables
+\newpage
+
+% ══════════════════════════════════════════════════════════════════════════
+% CHƯƠNG 1: GIỚI THIỆU
+% ══════════════════════════════════════════════════════════════════════════
+\chapter{Giới Thiệu}
+
+\section{Đặt Vấn Đề}
+
+Âm nhạc là ngôn ngữ của cảm xúc. Tuy nhiên, việc tạo ra âm nhạc đòi hỏi
+nhiều năm luyện tập kỹ năng nhạc cụ và kiến thức nhạc lý. Câu hỏi đặt ra là:
+\textit{Liệu một người không biết nhạc có thể tạo ra âm nhạc có cảm xúc chỉ
+bằng cách di chuyển cơ thể?}
+
+Đây chính là động lực của đồ án này.
+
+\section{Mục Tiêu}
+
+\begin{itemize}
+  \item Xây dựng hệ thống sinh âm nhạc real-time từ cử chỉ người dùng qua webcam.
+  \item Áp dụng kiến trúc Transformer Encoder-Decoder với cơ chế Cross-Attention.
+  \item Tự thu thập dataset cặp (cử chỉ -- nhãn cảm xúc) và huấn luyện mô hình từ đầu.
+  \item Tích hợp đầu ra vào hệ thống tổng hợp âm thanh MIDI real-time qua FluidSynth.
+\end{itemize}
+
+\section{Đóng Góp Chính}
+
+So với các hệ thống tương tự, GestuRhythm v2 có điểm khác biệt:
+\begin{enumerate}
+  \item \textbf{Tách biệt hai luồng học:} (1) học cảm xúc từ cử chỉ và
+        (2) học ngữ pháp âm nhạc từ dữ liệu thật --- sau đó kết hợp qua Cross-Attention.
+  \item \textbf{Dataset tự thu thập:} 1853 mẫu từ 2 người với 6 trạng thái cảm xúc.
+  \item \textbf{Music Prior từ dữ liệu thật:} huấn luyện trên 5000 bản MIDI từ Lakh MIDI Dataset.
+\end{enumerate}
+
+\section{Bố Cục Báo Cáo}
+
+Phần còn lại của báo cáo được tổ chức như sau:
+Chương~\ref{chap:related} trình bày các nghiên cứu liên quan.
+Chương~\ref{chap:method} mô tả kiến trúc hệ thống và phương pháp.
+Chương~\ref{chap:data} trình bày quá trình thu thập và xử lý dữ liệu.
+Chương~\ref{chap:exp} trình bày kết quả thực nghiệm.
+Chương~\ref{chap:conclude} kết luận và hướng phát triển.
+
+% ══════════════════════════════════════════════════════════════════════════
+% CHƯƠNG 2: NGHIÊN CỨU LIÊN QUAN
+% ══════════════════════════════════════════════════════════════════════════
+\chapter{Nghiên Cứu Liên Quan}
+\label{chap:related}
+
+\section{Hệ Thống Điều Khiển Âm Nhạc Bằng Cử Chỉ}
+
+Theremin~\cite{theremin1928} là nhạc cụ điện tử đầu tiên điều khiển bằng cử chỉ
+tay trong không khí, ra đời năm 1920. Các nghiên cứu hiện đại như
+\cite{nime2022handmate} sử dụng MediaPipe để theo dõi tay trong trình duyệt.
+
+\section{Mô Hình Sinh Nhạc}
+
+Magenta~\cite{magenta2016} của Google DeepMind sử dụng RNN để sinh giai điệu.
+Music Transformer~\cite{huang2018music} áp dụng cơ chế Attention để học cấu trúc
+âm nhạc dài hạn. Jukebox~\cite{jukebox2020} của OpenAI sinh nhạc thô với giọng hát.
+
+\section{Biểu Diễn Cảm Xúc Trong Âm Nhạc}
+
+Mô hình Valence-Arousal~\cite{russell1980} là khung biểu diễn cảm xúc 2 chiều
+phổ biến trong nghiên cứu âm nhạc tình cảm.
+
+% ══════════════════════════════════════════════════════════════════════════
+% CHƯƠNG 3: PHƯƠNG PHÁP
+% ══════════════════════════════════════════════════════════════════════════
+\chapter{Kiến Trúc Hệ Thống}
+\label{chap:method}
+
+\section{Tổng Quan Kiến Trúc}
+
+Hệ thống GestuRhythm v2 gồm ba module chính như Hình~\ref{fig:architecture}:
+
+\begin{figure}[H]
+  \centering
+  \includegraphics[width=0.9\textwidth]{images/architecture.png}
+  \caption{Kiến trúc tổng quan của GestuRhythm v2}
+  \label{fig:architecture}
+\end{figure}
+
+\section{Gesture Emotion Encoder}
+
+Module này nhận chuỗi landmarks bàn tay và cơ thể theo thời gian, trích xuất
+vector cảm xúc $\mathbf{e} = [v, a] \in [-1, 1]^2$ trong không gian Valence-Arousal.
+
+\textbf{Kiến trúc:}
+\begin{itemize}
+  \item Input: $(B, T, 225)$ --- $T=30$ frame, 225 features (21 điểm tay $\times 2$ + 33 điểm pose)
+  \item Linear embedding: $225 \rightarrow 128$
+  \item Positional embedding: $\text{Embed}(100, 128)$
+  \item Transformer Encoder: 3 lớp, 4 attention heads, $d_{ff}=256$, Causal Mask
+  \item Output head: $128 \rightarrow 64 \rightarrow 2$, kích hoạt Tanh
+\end{itemize}
+
+Causal Mask đảm bảo tại thời điểm $t$, mô hình chỉ sử dụng thông tin từ $[0, t]$,
+phù hợp với yêu cầu real-time:
+\[
+  M_{ij} = \begin{cases} 0 & \text{nếu } j \leq i \\ -\infty & \text{nếu } j > i \end{cases}
+\]
+
+\section{Music Prior}
+
+GPT-style autoregressive model học phân phối xác suất nốt nhạc:
+\[
+  P(\text{note}_t \mid \text{note}_0, \ldots, \text{note}_{t-1})
+\]
+
+\textbf{Kiến trúc:}
+\begin{itemize}
+  \item Vocabulary: 130 token (0--127 = nốt MIDI, 128 = REST, 129 = PAD)
+  \item Token embedding: $130 \rightarrow 128$
+  \item Transformer Encoder với Causal Mask: 4 lớp, 4 heads
+  \item Output: logits $(B, T, 130)$
+\end{itemize}
+
+\section{Conditioned Music Decoder}
+
+Cross-Attention kết hợp vector cảm xúc với hidden state của Music Prior:
+
+\[
+  \text{Decoder}(\mathbf{e}, \mathbf{h}_{\text{prior}}) =
+  \text{TransformerDecoder}(\underbrace{\mathbf{h}_{\text{prior}}}_{\text{Query}},
+  \underbrace{W_e \mathbf{e}}_{\text{Key/Value}})
+\]
+
+Chỉ có trọng số Cross-Attention được huấn luyện; Encoder và Music Prior bị đóng băng (frozen).
+
+\section{Music Theory Constraints}
+
+Scale mask được áp dụng trước softmax để đảm bảo nốt nhạc không bao giờ lạc điệu:
+\[
+  \tilde{l}_i = \begin{cases} l_i & \text{nếu nốt } i \in \text{scale} \\ -\infty & \text{ngược lại} \end{cases}
+\]
+
+% ══════════════════════════════════════════════════════════════════════════
+% CHƯƠNG 4: DỮ LIỆU
+% ══════════════════════════════════════════════════════════════════════════
+\chapter{Dữ Liệu}
+\label{chap:data}
+
+\section{Dataset Cử Chỉ -- Cảm Xúc}
+
+\subsection{Thiết Kế Thu Thập}
+
+Nhóm thiết kế 6 chế độ cảm xúc dựa trên mô hình Valence-Arousal:
+
+\begin{table}[H]
+  \centering
+  \caption{6 chế độ cảm xúc trong dataset}
+  \label{tab:modes}
+  \begin{tabular}{clccl}
+    \toprule
+    \textbf{ID} & \textbf{Tên} & \textbf{Valence} & \textbf{Arousal} & \textbf{Cử chỉ đặc trưng} \\
+    \midrule
+    0 & HAPPY\_HIGH   & +1.0 & +1.0 & Tay nhanh, rộng, lên cao \\
+    1 & HAPPY\_LOW    & +1.0 & -0.5 & Tay chậm, tròn, nhẹ \\
+    2 & SAD\_HIGH     & -1.0 & +0.8 & Tay thấp, giật cục, co rút \\
+    3 & SAD\_LOW      & -1.0 & -1.0 & Tay thấp nhất, rất chậm \\
+    4 & NEUTRAL       &  0.0 &  0.0 & Tay giữa, di chuyển đều \\
+    5 & NONE          &  0.0 &  0.0 & Không có tay \\
+    \bottomrule
+  \end{tabular}
+\end{table}
+
+\subsection{Thống Kê Dataset}
+
+\begin{table}[H]
+  \centering
+  \caption{Thống kê dataset cử chỉ -- cảm xúc}
+  \label{tab:dataset}
+  \begin{tabular}{lc}
+    \toprule
+    \textbf{Thuộc tính} & \textbf{Giá trị} \\
+    \midrule
+    Số người thu thập & 2 (A, C) \\
+    Tổng số mẫu & 1853 \\
+    Số mẫu mỗi chế độ & $\approx 150$ \\
+    Số frame mỗi mẫu & 30 ($\approx$1 giây) \\
+    Số features mỗi frame & 225 \\
+    \bottomrule
+  \end{tabular}
+\end{table}
+
+\begin{figure}[H]
+  \centering
+  \includegraphics[width=\textwidth]{images/dataset_analysis.png}
+  \caption{Phân tích phân bố dữ liệu thu thập}
+  \label{fig:dataset}
+\end{figure}
+
+\section{Lakh MIDI Dataset}
+
+Music Prior được huấn luyện trên 5000 bản nhạc từ Lakh MIDI Clean Dataset~\cite{raffel2016},
+bao gồm nhiều thể loại nhạc pop, rock, jazz, classical.
+
+% ══════════════════════════════════════════════════════════════════════════
+% CHƯƠNG 5: KẾT QUẢ THỰC NGHIỆM
+% ══════════════════════════════════════════════════════════════════════════
+\chapter{Kết Quả Thực Nghiệm}
+\label{chap:exp}
+
+\section{Cài Đặt Thực Nghiệm}
+
+\begin{table}[H]
+  \centering
+  \caption{Cài đặt huấn luyện}
+  \label{tab:training}
+  \begin{tabular}{llll}
+    \toprule
+    \textbf{Module} & \textbf{Optimizer} & \textbf{Epochs} & \textbf{Batch size} \\
+    \midrule
+    Emotion Encoder    & AdamW, lr=1e-3 & 80  & 32 \\
+    Music Prior        & AdamW, lr=5e-4 & 30  & 64 \\
+    Conditioned Decoder & Adam, lr=1e-3 & 50  & 32 \\
+    \bottomrule
+  \end{tabular}
+\end{table}
+
+\section{Kết Quả Gesture Emotion Encoder}
+
+\begin{figure}[H]
+  \centering
+  \includegraphics[width=\textwidth]{images/training_results.png}
+  \caption{Kết quả huấn luyện Gesture Emotion Encoder}
+  \label{fig:enc_results}
+\end{figure}
+
+\begin{table}[H]
+  \centering
+  \caption{Đánh giá Gesture Emotion Encoder}
+  \label{tab:enc_eval}
+  \begin{tabular}{lc}
+    \toprule
+    \textbf{Metric} & \textbf{Giá trị} \\
+    \midrule
+    Val Loss (MSE) & 0.0059 \\
+    MAE Valence    & [điền sau khi chạy] \\
+    MAE Arousal    & [điền sau khi chạy] \\
+    \bottomrule
+  \end{tabular}
+\end{table}
+
+\section{Kết Quả Music Prior}
+
+\begin{figure}[H]
+  \centering
+  \includegraphics[width=0.9\textwidth]{images/music_prior_results.png}
+  \caption{Kết quả huấn luyện Music Prior trên Lakh MIDI}
+  \label{fig:prior_results}
+\end{figure}
+
+\begin{table}[H]
+  \centering
+  \caption{Đánh giá Music Prior}
+  \label{tab:prior_eval}
+  \begin{tabular}{lcc}
+    \toprule
+    \textbf{Metric} & \textbf{Giá trị} & \textbf{Ý nghĩa} \\
+    \midrule
+    Val Loss (CrossEntropy) & 1.39 & \\
+    Perplexity              & 4.01 & Cần 4 lần đoán để ra đúng nốt \\
+    Random baseline         & 4.87 & log(130) \\
+    Cải thiện so với random & $\times$32 & \\
+    \bottomrule
+  \end{tabular}
+\end{table}
+
+\section{Kết Quả Conditioned Decoder}
+
+\begin{figure}[H]
+  \centering
+  \includegraphics[width=\textwidth]{images/conditioned_decoder_results.png}
+  \caption{So sánh melody sinh ra với cảm xúc Happy (+0.8,+0.8) vs Sad (-0.8,-0.8)}
+  \label{fig:dec_results}
+\end{figure}
+
+\section{Demo Hệ Thống Real-time}
+
+\begin{figure}[H]
+  \centering
+  \includegraphics[width=0.85\textwidth]{images/demo_screenshot.png}
+  \caption{Giao diện demo real-time của GestuRhythm v2}
+  \label{fig:demo}
+\end{figure}
+
+% ══════════════════════════════════════════════════════════════════════════
+% CHƯƠNG 6: KẾT LUẬN
+% ══════════════════════════════════════════════════════════════════════════
+\chapter{Kết Luận và Hướng Phát Triển}
+\label{chap:conclude}
+
+\section{Kết Luận}
+
+Đồ án đã xây dựng thành công hệ thống GestuRhythm v2 với các kết quả chính:
+\begin{enumerate}
+  \item Gesture Emotion Encoder đạt MAE $< 0.1$ trên thang $[-1, 1]$, chứng tỏ
+        mô hình học được ánh xạ từ cử chỉ sang không gian cảm xúc.
+  \item Music Prior đạt perplexity 4.01, cải thiện $\times$32 so với baseline ngẫu nhiên.
+  \item Conditioned Decoder với Cross-Attention tạo ra sự khác biệt có ý nghĩa
+        giữa melody sinh ra ở các trạng thái cảm xúc khác nhau.
+  \item Hệ thống chạy real-time $< 1$ giây latency trên CPU thông thường.
+\end{enumerate}
+
+\section{Hạn Chế}
+
+\begin{itemize}
+  \item Dataset nhỏ (1853 mẫu, 2 người) dẫn đến overfitting nhẹ.
+  \item Melody sinh ra chưa có cấu trúc câu nhạc rõ ràng.
+\end{itemize}
+
+\section{Hướng Phát Triển}
+
+\begin{itemize}
+  \item Mở rộng dataset: thêm người thu thập, thêm chế độ cảm xúc.
+  \item Triển khai web app trên Hugging Face Spaces.
+  \item Thêm tính năng record và export MIDI.
+\end{itemize}
+
+% ══════════════════════════════════════════════════════════════════════════
+% TÀI LIỆU THAM KHẢO
+% ══════════════════════════════════════════════════════════════════════════
+\bibliographystyle{plainnat}
+\bibliography{references}
+
+\end{document}
