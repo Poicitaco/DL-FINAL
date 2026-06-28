@@ -18,6 +18,7 @@ os.environ['PATH'] += r';C:\tools\fluidsynth\bin'
 BASE       = os.path.join(os.path.dirname(__file__), '..')
 ENC_PATH   = os.path.join(BASE, 'model', 'gesture_emotion_encoder.pt')
 PRIOR_PATH = os.path.join(BASE, 'model', 'music_prior.pt')
+DEC_PATH   = os.path.join(BASE, 'model', 'conditioned_decoder.pt')
 SF_PATH    = os.path.join(BASE, 'soundfonts', 'FluidR3_GM.sf2')
 CAM_CONFIG = os.path.join(BASE, 'camera_config.txt')
 SEQ_LEN    = 30
@@ -63,6 +64,18 @@ class MusicPrior(nn.Module):
         x    = self.embed(tokens) + self.pos_enc(pos)
         return self.transformer(x, mask=mask)
 
+class ConditionedDecoder(nn.Module):
+    def __init__(self, emotion_dim=2, d_model=128, nhead=4, num_layers=2, vocab_size=130):
+        super().__init__()
+        self.emotion_proj = nn.Linear(emotion_dim, d_model)
+        dec_layer = nn.TransformerDecoderLayer(d_model=d_model, nhead=nhead,
+            dim_feedforward=256, dropout=0.0, batch_first=True)
+        self.transformer = nn.TransformerDecoder(dec_layer, num_layers=num_layers)
+        self.head = nn.Linear(d_model, vocab_size)
+    def forward(self, emotion_vec, prior_hidden):
+        memory = self.emotion_proj(emotion_vec).unsqueeze(1)
+        return self.head(self.transformer(prior_hidden, memory))
+
 def load_models():
     enc_ckpt   = torch.load(ENC_PATH,   map_location='cpu', weights_only=False)
     prior_ckpt = torch.load(PRIOR_PATH, map_location='cpu', weights_only=False)
@@ -72,7 +85,17 @@ def load_models():
     prior   = MusicPrior(**prior_ckpt['config'])
     prior.load_state_dict(prior_ckpt['model_state'])
     prior.eval()
-    return encoder, prior
+    # Load ConditionedDecoder neu co
+    decoder = None
+    if os.path.exists(DEC_PATH):
+        dec_ckpt = torch.load(DEC_PATH, map_location='cpu', weights_only=False)
+        decoder  = ConditionedDecoder(**dec_ckpt['config'])
+        decoder.load_state_dict(dec_ckpt['model_state'])
+        decoder.eval()
+        print('ConditionedDecoder loaded')
+    else:
+        print('conditioned_decoder.pt not found - dung bias fallback')
+    return encoder, prior, decoder
 
 # ── Music Theory ──────────────────────────────────────────────────────────
 SCALES = {
@@ -104,7 +127,36 @@ def apply_scale_mask(logits, scale_name, root=60):
             logits[i] = float('-inf')
     return logits
 
-def generate_notes(primer_tokens, prior, emotion_vec, scale, temperature, n_notes=16):
+def generate_notes(primer_tokens, prior, emotion_vec, scale, temperature, n_notes=16, decoder=None):
+    """Sinh n_notes: dung ConditionedDecoder neu co, fallback sang bias neu khong."""
+    tokens = torch.tensor([primer_tokens], dtype=torch.long)
+    notes  = []
+    with torch.no_grad():
+        for _ in range(n_notes):
+            prior_hidden = prior.get_hidden(tokens)  # (1,T,128)
+            if decoder is not None:
+                # Dung Cross-Attention that su
+                emo  = emotion_vec.unsqueeze(0) if emotion_vec.dim() == 1 else emotion_vec
+                logits = decoder(emo, prior_hidden)[0, -1, :].clone()
+            else:
+                # Fallback: bias logits thu cong
+                logits = prior(tokens)[0, -1, :].clone()
+                valence, arousal = float(emotion_vec[0]), float(emotion_vec[1])
+                pitch_bias = np.zeros(128)
+                center = int(np.clip(64 + valence * 12 + arousal * 6, 48, 84))
+                for i in range(128):
+                    pitch_bias[i] = -abs(i - center) * 0.05
+                logits[:128] += torch.tensor(pitch_bias, dtype=torch.float32)
+            # Apply scale mask
+            logits_np = logits.numpy().copy()
+            logits_np = apply_scale_mask(logits_np, scale)
+            logits    = torch.tensor(logits_np)
+            probs  = F.softmax(logits / temperature, dim=0)
+            next_t = torch.multinomial(probs, 1)
+            tokens = torch.cat([tokens, next_t.unsqueeze(0)], dim=1)
+            if next_t.item() < 128:
+                notes.append(next_t.item())
+    return notes if notes else [60, 64, 67]
     """Sinh n_notes tu Music Prior, conditioned boi emotion."""
     tokens = torch.tensor([primer_tokens], dtype=torch.long)
     notes  = []
@@ -298,7 +350,7 @@ def draw_ui(frame, valence, arousal, inst, scale, tempo, notes, active):
 # ── Main ──────────────────────────────────────────────────────────────────
 def main():
     print('Loading models...')
-    encoder, prior = load_models()
+    encoder, prior, decoder = load_models()
     print(f'Encoder: {sum(p.numel() for p in encoder.parameters()):,} params')
     print(f'Prior  : {sum(p.numel() for p in prior.parameters()):,} params')
 
@@ -354,7 +406,7 @@ def main():
             scale, prog, inst, tempo, temp = emotion_to_config(valence, arousal)
 
             # Sinh melody tu Music Prior + emotion conditioning
-            notes_cur = generate_notes(primer, prior, emotion_vec, scale, temp, n_notes=16)
+            notes_cur = generate_notes(primer, prior, emotion_vec, scale, temp, n_notes=16, decoder=decoder)
             primer    = notes_cur[-4:]  # 4 not cuoi lam primer cho lan tiep
 
             # Cap nhat backing chord theo scale
