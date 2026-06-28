@@ -239,7 +239,7 @@ def get_chord(hand_dict):
     return CHORD_MAP[row]
 
 # ── UI ────────────────────────────────────────────────────────────────────
-def draw_ui(frame, notes_playing, chord, inst, rp, lp, buf_len, tempo):
+def draw_ui(frame, notes_playing, chord, inst, rp, lp, buf_len, tempo, history):
     h, w = frame.shape[:2]
     color = (0,200,255) if rp else (100,100,100)
     cv2.rectangle(frame, (0,0),(w-1,h-1), color, 3)
@@ -273,6 +273,16 @@ def draw_ui(frame, notes_playing, chord, inst, rp, lp, buf_len, tempo):
     cv2.putText(frame,'Q=thoat  SPACE=stop',(10,h-28),
                 cv2.FONT_HERSHEY_SIMPLEX, 0.4,(200,200,200),1)
 
+    # History panel - hien thi 8 thay doi gan nhat
+    panel_x = 5
+    cv2.rectangle(frame, (panel_x, 58), (220, 58 + 8*22 + 5), (0,0,0), -1)
+    cv2.putText(frame, 'LICH SU THAY DOI:', (panel_x+3, 73),
+                cv2.FONT_HERSHEY_SIMPLEX, 0.38, (180,180,180), 1)
+    for i, (ts, event, color) in enumerate(list(history)[-8:]):
+        y = 90 + i * 20
+        cv2.putText(frame, event, (panel_x+3, y),
+                    cv2.FONT_HERSHEY_SIMPLEX, 0.4, color, 1)
+
     # Chord zones ben phai
     zone_h = h // 5
     for i, (name, c) in enumerate([("MAJOR",(0,200,100)),("MAJOR",(0,200,100)),
@@ -296,12 +306,15 @@ def main():
         print('Cannot open camera'); engine.delete(); return
 
     frame_buffer  = collections.deque(maxlen=SEQ_LEN)
+    history       = collections.deque(maxlen=8)
     notes_playing = None
     inst_name     = 'Guitar'
     chord         = 0
     tempo         = 120
     rp = lp       = False
     last_gen      = 0
+    last_chord    = -1
+    last_rp       = False
 
     print('Ready! Move your hands.')
     print('Q = quit | SPACE = stop notes')
@@ -326,6 +339,17 @@ def main():
         chord = get_chord(hand_dict)
         engine.set_backing_chord(chord)
 
+        # Log thay doi
+        if rp != last_rp:
+            if rp: history.append((time.time(), '+ Tay phai bat dau', (0,220,80)))
+            else:  history.append((time.time(), '- Tay phai dung',    (100,100,100)))
+            last_rp = rp
+        if chord != last_chord and last_chord >= 0:
+            history.append((time.time(), f'Chord: {CHORD_NAMES[last_chord]}->{CHORD_NAMES[chord]}', (0,180,255)))
+            last_chord = chord
+        elif last_chord < 0:
+            last_chord = chord
+
         feat = build_feature(hand_dict)
         frame_buffer.append(feat)
 
@@ -340,11 +364,14 @@ def main():
             inst_name = engine.play_sequence(notes, chord, tempo)
             notes_playing = notes
             last_gen      = now
+            # Log note moi
+            avg_p = int(float(notes[:,0].mean()) * (PITCH_MAX-PITCH_MIN) + PITCH_MIN)
+            history.append((now, f'Note: {NOTE_NAMES.get(avg_p,avg_p)} {tempo}BPM {inst_name}', (255,200,0)))
         elif not rp:
             engine.stop_all()
             notes_playing = None
 
-        draw_ui(frame, notes_playing, chord, inst_name, rp, lp, len(frame_buffer), tempo)
+        draw_ui(frame, notes_playing, chord, inst_name, rp, lp, len(frame_buffer), tempo, history)
         cv2.imshow('GestuRhythm', frame)
         key = cv2.waitKey(1) & 0xFF
         if key == ord('q'): break
