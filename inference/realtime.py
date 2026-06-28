@@ -123,23 +123,28 @@ class MusicEngine:
 
     def _play_loop(self, notes, chord, tempo):
         scale = CHORD_SCALES[chord]
-        beat  = 60.0 / max(tempo, 60)
-        for note in notes:
+        beat  = 60.0 / max(tempo, 80)
+        for i, note in enumerate(notes):
             if not self.running: break
-            p_raw = float(note[0]) * (PITCH_MAX - PITCH_MIN) + PITCH_MIN
-            v_raw = float(note[1]) * (VEL_MIN   - VEL_MIN  ) + VEL_MIN  # fix below
-            d_raw = float(note[2])
-            pitch    = int(np.clip(p_raw, PITCH_MIN, PITCH_MAX))
+            pitch    = int(np.clip(float(note[0]) * (PITCH_MAX-PITCH_MIN) + PITCH_MIN, PITCH_MIN, PITCH_MAX))
             velocity = int(np.clip(float(note[1]) * (VEL_MAX-VEL_MIN) + VEL_MIN, VEL_MIN, VEL_MAX))
-            duration = float(np.clip(d_raw * beat * 2, 0.1, beat * 2))
-            # Snap to scale
-            pitch = min(scale, key=lambda s: abs(s - pitch))
+            duration = float(np.clip(float(note[2]) * beat * 1.5, 0.08, beat * 1.5))
+            pitch    = min(scale, key=lambda s: abs(s - pitch))
+            # Them accent: nhat manh hon moi 4 not
+            if i % 4 == 0:
+                velocity = min(127, velocity + 20)
             with self.lock:
                 if 0 in self.playing_notes:
                     self.fs.noteoff(0, self.playing_notes[0])
                 self.fs.noteon(0, pitch, velocity)
                 self.playing_notes[0] = pitch
-            time.sleep(duration)
+            # Note on 80% duration, off 20% -> co articulation
+            time.sleep(duration * 0.75)
+            with self.lock:
+                self.fs.noteoff(0, pitch)
+                if 0 in self.playing_notes:
+                    del self.playing_notes[0]
+            time.sleep(duration * 0.25)
         with self.lock:
             if 0 in self.playing_notes:
                 self.fs.noteoff(0, self.playing_notes[0])
@@ -326,7 +331,7 @@ def main():
 
         now = time.time()
         # Sinh chuoi not moi moi 1 giay neu co tay phai
-        if len(frame_buffer) == SEQ_LEN and rp and (now - last_gen) > 1.0:
+        if len(frame_buffer) == SEQ_LEN and rp and (now - last_gen) > 0.5:
             seq    = torch.tensor([list(frame_buffer)], dtype=torch.float32)
             notes  = model.generate(seq)[0].numpy()  # (16, 3)
             # Tinh tempo tu velocity trung binh
