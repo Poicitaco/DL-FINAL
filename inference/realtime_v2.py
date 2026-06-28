@@ -268,6 +268,8 @@ def draw_ui(frame, valence, arousal, inst, scale, tempo, notes, active):
                 cv2.FONT_HERSHEY_SIMPLEX, 0.9, aro_color, 2)
     cv2.putText(frame, get_emotion_label(valence, arousal), (w-210, 102),
                 cv2.FONT_HERSHEY_SIMPLEX, 0.38, (200,200,200), 1)
+    # Emotion meter (goc duoi phai)
+    cx, cy, r = w-70, h-70, 45
     cv2.circle(frame,(cx,cy),r,(40,40,40),-1)
     cv2.circle(frame,(cx,cy),r,color,2)
     cv2.line(frame,(cx-r,cy),(cx+r,cy),(80,80,80),1)
