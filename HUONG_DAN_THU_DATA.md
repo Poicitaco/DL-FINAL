@@ -1,130 +1,78 @@
 # Huong dan Thu Data GestuRhythm v2
 
-## Chuan bi truoc khi thu
+## Chuan bi
 
-**Dung cu:**
 - Webcam (hoac Camo/DroidCam qua dien thoai)
-- Phong du anh sang, nen sang sau lung
-
-**Tu the:**
-- Ngoi hoac dung cach camera 50-70cm
-- **Nua than tren** trong khung hinh — MediaPipe can thay ro tu vai den ngon tay
-- Long ban tay huong vao camera
-- Chi can **1 tay** (tay thuan)
+- Dung hoac ngoi cach camera 50-70cm
+- Camera huong thang vao mat/than tren — can thay ro tu vai den ban tay
+- Phong du anh sang
 
 ---
 
-## 6 Che do Can Thu
+## 6 Che do — Hinh dung de nho
 
 ---
 
-### Che do 1: HAPPY_HIGH (Vui + Nang luong cao)
+### Che do 1: HAPPY_HIGH
+**Tuong tuong:** Ban dang o san van dong, doi bong yeu thich vua ghi ban. Ban nhay len co vu.
 
-**Cam xuc:** Nhu dang co vu doi bong yeu thich vua ghi ban.
-
-**Lam gi:**
-- Giu tay len cao (vung tren man hinh)
-- Vay tay qua lai NHANH — khoang 2-3 lan/giay
-- Bien do RONG — tu trai sang phai ~50cm
-- Toan than co the hoi lay dong theo
-
-**Nhac nen:** Guitar nhanh, vui — di chuyen theo nhip nhac
+**Lam gi:** 2 tay giu len CAO, vay qua lai NHANH va RONG. Nhu dang hoan ho, reo ho.
 
 ---
 
-### Che do 2: HAPPY_LOW (Vui + Nhe nhang)
+### Che do 2: HAPPY_LOW
+**Tuong tuong:** Ban dang nghe bai nhac yeu thich, ngoi thu gian, dau hoi lay dong.
 
-**Cam xuc:** Nhu dang nhin hoang hon dep, thu vi nhe nhang.
-
-**Lam gi:**
-- Tay o vung giua man hinh
-- Di chuyen CHAM — khoang 1 lan/2 giay
-- Bien do VUA — qua lai ~30cm
-- Chuyen dong tron, muot ma
-
-**Nhac nen:** Guitar cham, nhe — di chuyen theo song am thanh
+**Lam gi:** 2 tay luot nhe ngang, CHAM rai, bieu do VUA. Nhu dang dua tay theo song nhac.
 
 ---
 
-### Che do 3: SAD_HIGH (Buon + Cang thang)
+### Che do 3: SAD_HIGH
+**Tuong tuong:** Ban dang cam hai hop thuoc va XOC XOC — tay thap, chuyen dong nho va giat cuc.
 
-**Cam xuc:** Nhu dang bop chat tay vi tuc gian hoac lo lang.
-
-**Lam gi:**
-- Tay de THAP (vung duoi man hinh)
-- Di chuyen GAP va khong deu — co rut lai roi day ra
-- Chuyen dong nho, khong rong
-- Co the hoi run nhe
-
-**Nhac nen:** Strings tram, can thang
+**Lam gi:** 2 tay de THAP (ngang hong), chuyen dong GAP va KHONG DEU. Nhu dang bop bop cai gi do trong tay.
 
 ---
 
-### Che do 4: SAD_LOW (Buon + Cham)
+### Che do 4: SAD_LOW
+**Tuong tuong:** Ban vua khoc xong, met moi, 2 tay THAP LON, nhu khong con suc nac len.
 
-**Cam xuc:** Nhu dang met moi, keo le buoc chan.
-
-**Lam gi:**
-- Tay de THAP NHAT trong khung hinh
-- Di chuyen RAT CHAM — khoang 1 lan/4 giay
-- Nhu tay rat nang, khong muon nhac len
-- Chuyen dong thang, it bien do
-
-**Nhac nen:** Strings rat cham, buon
+**Lam gi:** 2 tay de THAP NHAT trong khung hinh, di chuyen RAT CHAM. Nhu dang keo le doi tay nang ne.
 
 ---
 
-### Che do 5: NEUTRAL (Trung tinh)
+### Che do 5: NEUTRAL
+**Tuong tuong:** Ban dang nhin dien thoai, ngoi binh thuong, tay gat gat man hinh.
 
-**Cam xuc:** Bình thuong, khong co cam xuc dac biet.
-
-**Lam gi:**
-- Tay o GIUA man hinh
-- Di chuyen DEU DANG — khong qua nhanh, khong qua cham
-- Nhu dang go ban phim hoac lam viec binh thuong
-- Khong co bieu cam dac biet
-
-**Nhac nen:** Piano, nhip dieu
+**Lam gi:** 2 tay o GIUA man hinh, di chuyen DEU — khong qua nhanh, khong qua cham.
 
 ---
 
-### Che do 6: NONE (Khong co tay)
-
-**Lam gi:**
-- Ha tay xuong, ra ngoai khung hinh
-- Ngoi yen, khong lam gi ca
-- Khung hinh hien thi nua than tren nhung KHONG thay tay
+### Che do 6: NONE
+**Lam gi:** Ha ca 2 tay xuong, buong xuoi. Khong co tay trong khung hinh.
 
 ---
 
-## Quy trinh thu moi che do
+## Quy trinh moi che do
 
 ```
-1. Script hien man hinh gioi thieu che do
-2. Doc ky ten che do va huong dan
-3. Nhan SPACE
-4. Dem nguoc 3-2-1
-5. Bat nhac nen
-6. Di chuyen tay THEO CAM XUC trong khi nghe nhac
-7. Thanh tien do day -> tu dong chuyen che do tiep
-8. Nhan SPACE de sang che do tiep
+Script hien man hinh gioi thieu
+    -> Nhan SPACE
+    -> Dem nguoc 3-2-1
+    -> Nhac nen bat dau phat
+    -> Di chuyen tay THEO CAM XUC trong khi nghe nhac
+    -> Thanh tien do day -> tu dong chuyen che do tiep
 ```
 
----
+## Luu y quan trong
 
-## Meo de thu tot
+- **1 tay hoac 2 tay deu duoc** — 2 tay thi data tot hon
+- Mo tay, long ban tay huong vao camera
+- **Nghe nhac nen va de cam xuc tu nhien** — dung dien xuat qua lo
+- Nhan **SPACE** de tam dung neu can nghi
+- Nhan **Q** de thoat (data da thu van duoc luu)
 
-1. **Nghe nhac truoc** khi bat dau di chuyen — de cam xuc tu nhien
-2. **Dung dien xuat** — lam qua thi cung tot hon lam it
-3. **Da dang chuyen dong** trong cung 1 che do — dung phat lai dung 1 dong tac
-4. **Doi chieu sang** neu MediaPipe khong nhan dien duoc tay
+## Sau khi thu xong
 
----
-
-## Upload sau khi thu xong
-
-Sau khi thu xong tat ca 6 che do:
-1. Tim file: `data/raw/gesture_data_v2.csv`
-2. Upload len Google Drive
-3. Doi ten: `gesture_data_v2_[ten_ban].csv`
-4. Nhan link cho nhom truong
+Upload file `data/raw/gesture_data_v2.csv` len Google Drive.
+Doi ten: `gesture_data_v2_[ten].csv` (vd: gesture_data_v2_A.csv)
