@@ -99,20 +99,25 @@ Dat ten theo nguoi: `gesture_data_v2_A.csv`, `gesture_data_v2_B.csv`...
 ## Sau khi co du data (nhom truong lam)
 
 ```bash
-# 1. Dat cac file CSV vao data/raw/
-# 2. Merge
-python scripts/merge_data.py
+# 1. Merge data tu nhieu nguoi
+python scripts/merge_data.py   # (neu co nhieu file CSV)
 
-# 3. Prepare dataset
+# 2. Prepare dataset
 python scripts/prepare_dataset_v2.py
+# -> data/processed/gesturhythm_v2.zip
 
-# 4. Upload len Kaggle, train notebook
-# notebooks/train_v2.ipynb
+# 3. Upload gesturhythm_v2.zip len Kaggle Dataset (ten: gesturhythm-v2)
 
-# 5. Download model ve model/
-# gesture_emotion_encoder.pt
-# music_prior.pt
-# conditioned_decoder.pt
+# 4. Train theo thu tu:
+#    Buoc 1: notebooks/train_v2.ipynb          -> gesture_emotion_encoder.pt
+#    Buoc 2: notebooks/train_music_prior.ipynb -> music_prior.pt
+#    Buoc 3: notebooks/train_conditioned_decoder.ipynb -> conditioned_decoder.pt
+#    (Buoc 3 can ca 2 model tren + gesturhythm-v2 dataset)
+
+# 5. Download ve, luu vao model/
+#    model/gesture_emotion_encoder.pt
+#    model/music_prior.pt
+#    model/conditioned_decoder.pt
 
 # 6. Chay real-time
 python inference/realtime_v2.py
