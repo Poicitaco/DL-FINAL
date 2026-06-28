@@ -372,7 +372,6 @@ def main():
 
     print('Starting audio...')
     audio = AudioEngine()
-    audio.start_backing([60,64,67], 24, 100)
     print('Ready!')
 
     cap = cv2.VideoCapture(load_cam(), cv2.CAP_MSMF)
@@ -425,14 +424,6 @@ def main():
             notes_cur = generate_notes(primer, prior, emotion_vec, scale, temp, n_notes=16, decoder=decoder)
             primer    = notes_cur[-4:]  # 4 not cuoi lam primer cho lan tiep
 
-            # Cap nhat backing chord theo scale
-            BACKING = {
-                'major':    ([60,64,67], 24, tempo),
-                'minor':    ([57,60,64], 48, tempo),
-                'dominant': ([55,59,62], 24, tempo),
-                'pentatonic':([60,64,67],0,  tempo),
-            }
-            audio.update_backing(*BACKING[scale])
             audio.play_melody(notes_cur, prog, tempo)
             last_gen = now
 
