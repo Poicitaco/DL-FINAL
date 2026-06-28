@@ -692,8 +692,9 @@ def main():
 
     print(f"\nSe thu lai: {', '.join(MODES[i]['name'] for i in selected)}")
     if os.path.exists(OUTPUT_CSV):
-        print("Xoa data cu cua cac che do nay truoc khi thu lai...")
-        delete_mode_data(selected)
+        confirm = input("Xoa data cu cua cac che do nay truoc khi thu? (y/n): ").strip().lower()
+        if confirm == 'y':
+            delete_mode_data(selected)
     print()
 
     player = MusicPlayer()
