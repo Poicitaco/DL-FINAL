@@ -256,18 +256,22 @@ class AudioEngine:
         self._backing_prog   = prog
         self._backing_tempo  = tempo
         self._backing_active = True
-        threading.Thread(target=self._backing_loop, daemon=True).start()
+        t = threading.Thread(target=self._backing_loop, daemon=True)
+        t.start()
 
     def _backing_loop(self):
-        self.fs.program_select(1, self.sfid, 0, self._backing_prog)
-        while self._backing_active:
-            beat = 60.0 / self._backing_tempo
-            for n in self._backing_notes:
-                self.fs.noteon(1, n, 50)
-            time.sleep(beat * 2.5)
-            for n in self._backing_notes:
-                self.fs.noteoff(1, n)
-            time.sleep(beat * 0.5)
+        try:
+            self.fs.program_select(1, self.sfid, 0, self._backing_prog)
+            while self._backing_active:
+                beat = 60.0 / self._backing_tempo
+                for n in self._backing_notes:
+                    self.fs.noteon(1, n, 50)
+                time.sleep(beat * 2.5)
+                for n in self._backing_notes:
+                    self.fs.noteoff(1, n)
+                time.sleep(beat * 0.5)
+        except Exception as e:
+            print(f'Backing error: {e}')
 
     def update_backing(self, notes, prog, tempo):
         self._backing_notes = notes
