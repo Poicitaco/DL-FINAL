@@ -145,7 +145,45 @@ class MusicEngine:
                 self.fs.noteoff(0, self.playing_notes[0])
                 del self.playing_notes[0]
 
-    def stop_all(self):
+    def start_backing(self, chord):
+        """Phat chord loop nen tren channel 1."""
+        self.stop_backing()
+        BACKING = {
+            0: ([60,64,67],    90,  0),   # C major, guitar
+            1: ([60,64,67],    90,  0),   # C major, guitar
+            2: ([57,60,64],    80, 48),   # Am, strings
+            3: ([55,59,62,67], 100, 0),   # G dominant, guitar
+        }
+        notes, tempo, prog = BACKING[chord]
+        self.fs.program_select(1, self.sfid, 0, prog)
+        self._backing_notes  = notes
+        self._backing_tempo  = tempo
+        self._backing_active = True
+        self._backing_chord  = chord
+        t = threading.Thread(target=self._backing_loop, daemon=True)
+        t.start()
+
+    def _backing_loop(self):
+        while getattr(self, '_backing_active', False):
+            beat = 60.0 / self._backing_tempo
+            # Phat chord (tat ca not cung luc)
+            for n in self._backing_notes:
+                self.fs.noteon(1, n, 55)
+            time.sleep(beat * 3)
+            for n in self._backing_notes:
+                self.fs.noteoff(1, n)
+            time.sleep(beat * 0.2)
+            # Doi chord neu thay doi
+            if getattr(self, '_backing_chord', 0) != getattr(self, '_pending_chord', self._backing_chord):
+                self._backing_chord = self._pending_chord
+
+    def stop_backing(self):
+        self._backing_active = False
+        for n in range(128):
+            self.fs.noteoff(1, n)
+
+    def set_backing_chord(self, chord):
+        self._pending_chord = chord
         self.running = False
         with self.lock:
             for ch, note in self.playing_notes.items():
@@ -260,6 +298,8 @@ def main():
     print('Ready! Move your hands.')
     print('Q = quit | SPACE = stop notes')
 
+    engine.start_backing(0)  # bat dau backing track
+
     while cap.isOpened():
         ret, frame = cap.read()
         if not ret: break
@@ -276,6 +316,7 @@ def main():
         rp    = 'Right' in hand_dict
         lp    = 'Left'  in hand_dict
         chord = get_chord(hand_dict)
+        engine.set_backing_chord(chord)
 
         feat = build_feature(hand_dict)
         frame_buffer.append(feat)
@@ -303,6 +344,7 @@ def main():
 
     cap.release()
     cv2.destroyAllWindows()
+    engine.stop_backing()
     engine.delete()
     print('Done.')
 
