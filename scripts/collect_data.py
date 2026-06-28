@@ -35,6 +35,7 @@ MODE_MUSIC = {
     "RIGHT_LR":           (24, [60,64,67],    100),  # Guitar, C major, trai-phai  # Guitar, C major, nhanh
     "RIGHT_CIRCLE":       (48, [60,63,67],    100),  # Strings, C minor, vua
     "RIGHT_ZD":           (0,  [60,64,67],    110),  # Piano, C major, vua
+    "RIGHT_HOLD":         (0,  [60,64,67,69,72], 80),  # Piano, C major, cham
     "LEFT_UD":            (48, [57,60,64],    80),   # Strings, Am, cham
     "LEFT_ZONES":         (0,  [60,64,67],    90),   # Piano, C major
     "BOTH_EXPAND":        (24, [60,64,67,72], 100),  # Guitar, C major
@@ -125,9 +126,9 @@ MODES = [
         "active": "right",
     },
     {
-        "name":   "4. TAY PHAI - DAY RA KÉO VAO",
-        "desc":   "Tay PHAI day ra xa camera roi keo lai | Nhu dang chay vao tuong",
-        "arrow":  "RIGHT_ZD",
+        "name":   "4. TAY PHAI - GIU YEN 5 VUNG",
+        "desc":   "Tay PHAI giu yen o 5 vung: Tren/Giua/Duoi/Trai/Phai | Moi vung 3 giay",
+        "arrow":  "RIGHT_HOLD",
         "color":  (100, 80, 255),
         "active": "right",
     },
@@ -281,6 +282,36 @@ def draw_arrow(frame, arrow_type, color):
         cv2.arrowedLine(ov, (cx + 150, cy + 40), (cx, cy + 40), rc, 6, tipLength=0.25)
         cv2.putText(ov, "TRAI - PHAI", (cx + 20, cy - 20), cv2.FONT_HERSHEY_SIMPLEX, 0.6, rc, 2)
         cv2.putText(ov, "DUNG YEN", (cx - 200, cy + 20), cv2.FONT_HERSHEY_SIMPLEX, 0.55, lc, 1)
+
+    elif arrow_type == "RIGHT_HOLD":
+        zones = [
+            (cx, cy - 100, "TREN"),
+            (cx + 130, cy, "PHAI"),
+            (cx, cy + 100, "DUOI"),
+            (cx - 130, cy, "TRAI"),
+            (cx, cy,       "GIUA"),
+        ]
+        # Sang len theo thu tu, moi vung 3 giay
+        active_idx = int(time.time() / 3) % len(zones)
+        for i, (zx, zy, label) in enumerate(zones):
+            if i == active_idx:
+                # Vung dang active: sang, to hon, nhap nhay
+                pulse = int(180 + 75 * abs(np.sin(time.time() * 4)))
+                c_zone = (0, pulse, pulse)
+                cv2.circle(ov, (zx, zy), 35, c_zone, -1)  # to day
+                cv2.circle(ov, (zx, zy), 38, (255,255,255), 2)
+                cv2.putText(ov, label, (zx - 25, zy + 55),
+                            cv2.FONT_HERSHEY_SIMPLEX, 0.6, (255,255,255), 2)
+                cv2.putText(ov, "DAT TAY VAO DAY", (zx - 70, zy - 50),
+                            cv2.FONT_HERSHEY_SIMPLEX, 0.5, (255,255,255), 1)
+            else:
+                # Vung khac: mo
+                cv2.circle(ov, (zx, zy), 25, (80, 80, 80), 2)
+                cv2.putText(ov, label, (zx - 20, zy + 40),
+                            cv2.FONT_HERSHEY_SIMPLEX, 0.45, (120, 120, 120), 1)
+        # So thu tu
+        cv2.putText(ov, f"Vung {active_idx+1}/5 - GIU YEN 3 GIAY",
+                    (cx - 120, h - 100), cv2.FONT_HERSHEY_SIMPLEX, 0.55, (220,220,220), 1)
 
     elif arrow_type == "LEFT_UD":
         cv2.arrowedLine(ov, (cx - 120, cy + 80), (cx - 120, cy - 80), lc, 6, tipLength=0.3)
