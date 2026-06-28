@@ -258,8 +258,16 @@ def draw_ui(frame, valence, arousal, inst, scale, tempo, notes, active):
     cv2.putText(frame,f'{emo_label}  |  {inst}  |  {scale}  |  {tempo}BPM',
                 (10,48),cv2.FONT_HERSHEY_SIMPLEX,0.48,color,1)
 
-    # Emotion meter
-    cx, cy, r = w-70, h-70, 45
+    # Chi so lon goc tren phai
+    cv2.rectangle(frame, (w-220, 0), (w, 110), (0,0,0), -1)
+    val_color = (0,220,80) if valence > 0.2 else ((80,80,255) if valence < -0.2 else (180,180,180))
+    aro_color = (0,220,255) if arousal > 0.2 else ((255,120,0) if arousal < -0.2 else (180,180,180))
+    cv2.putText(frame, f'VAL {valence:+.2f}', (w-210, 35),
+                cv2.FONT_HERSHEY_SIMPLEX, 0.9, val_color, 2)
+    cv2.putText(frame, f'ARO {arousal:+.2f}', (w-210, 75),
+                cv2.FONT_HERSHEY_SIMPLEX, 0.9, aro_color, 2)
+    cv2.putText(frame, get_emotion_label(valence, arousal), (w-210, 102),
+                cv2.FONT_HERSHEY_SIMPLEX, 0.38, (200,200,200), 1)
     cv2.circle(frame,(cx,cy),r,(40,40,40),-1)
     cv2.circle(frame,(cx,cy),r,color,2)
     cv2.line(frame,(cx-r,cy),(cx+r,cy),(80,80,80),1)
@@ -337,7 +345,7 @@ def main():
         # Inference moi 0.8 giay khi co chuyen dong
         if len(frame_buf) == SEQ_LEN and active and (now - last_gen) > 0.8:
             seq         = torch.tensor([list(frame_buf)], dtype=torch.float32)
-            emotion_vec = encoder(seq)[0]
+            emotion_vec = encoder(seq)[0].detach()
             valence     = float(emotion_vec[0])
             arousal     = float(emotion_vec[1])
 
