@@ -41,7 +41,7 @@ MODE_MUSIC = {
     "BOTH_EXPAND":        (24, [60,64,67,72], 100),  # Guitar, C major
     "BOTH_SAME":          (48, [60,63,67,72], 90),   # Strings, C minor
     "RIGHT_FAST_LEFT_HOLD":(24,[60,64,67],    130),  # Guitar nhanh
-    "RIGHT_8":            (48, [60,63,67,70], 90),   # Strings, C minor7, cham
+    "RIGHT_SLASH":        (24, [60,64,67],    120),  # Guitar staccato
     "NONE":               (None, [],           0),   # Im lang
 }
 
@@ -171,9 +171,9 @@ MODES = [
     },
     # ── Dong tac dac biet ─────────────────────────────────────────────────
     {
-        "name":   "10. TAY PHAI - SO 8",
-        "desc":   "Tay PHAI ve hinh so 8 lien tuc: len trai, xuong giua, len phai, xuong giua",
-        "arrow":  "RIGHT_8",
+        "name":   "10. TAY PHAI - CHEM NGANG",
+        "desc":   "Tay PHAI chem ngang: TRAI->PHAI nhanh, dung, PHAI->TRAI nhanh, dung, lap lai",
+        "arrow":  "RIGHT_SLASH",
         "color":  (255, 80, 80),
         "active": "right",
     },
@@ -401,14 +401,16 @@ def draw_arrow(frame, arrow_type, color):
             cv2.arrowedLine(ov, (cx+60+ox2, cy), (cx+130+ox2, cy), rc, 4, tipLength=0.3)
         cv2.putText(ov, "VAY NHANH", (cx+50, cy-20), cv2.FONT_HERSHEY_SIMPLEX, 0.55, rc, 2)
 
-    elif arrow_type == "RIGHT_8":
-        # So 8: vong tren va vong duoi
-        cv2.ellipse(ov, (cx+100, cy-50), (50, 40), 0, 0, 360, rc, 2)
-        cv2.ellipse(ov, (cx+100, cy+50), (50, 40), 0, 0, 360, rc, 2)
-        cv2.arrowedLine(ov, (cx+100, cy-10), (cx+100, cy+10), rc, 3, tipLength=0.5)
-        cv2.putText(ov, "VE SO 8", (cx+60, cy+110), cv2.FONT_HERSHEY_SIMPLEX, 0.6, rc, 2)
-        cv2.putText(ov, "VONG TREN roi VONG DUOI lien tuc", (cx-50, cy+140),
-                    cv2.FONT_HERSHEY_SIMPLEX, 0.45, (220,220,220), 1)
+    elif arrow_type == "RIGHT_SLASH":
+        # Chem ngang: 2 mui ten nguoc chieu
+        cv2.arrowedLine(ov, (cx+20, cy-20), (cx+160, cy-20), rc, 6, tipLength=0.25)
+        cv2.putText(ov, "CHEM ->", (cx+20, cy-30), cv2.FONT_HERSHEY_SIMPLEX, 0.55, rc, 2)
+        cv2.arrowedLine(ov, (cx+140, cy+30), (cx, cy+30), rc, 6, tipLength=0.25)
+        cv2.putText(ov, "<- CHEM", (cx+30, cy+55), cv2.FONT_HERSHEY_SIMPLEX, 0.55, rc, 2)
+        cv2.putText(ov, "NHANH - DUNG - NHANH", (cx-20, cy+90),
+                    cv2.FONT_HERSHEY_SIMPLEX, 0.5, (220,220,220), 1)
+        cv2.putText(ov, "LONG BAN TAY HUONG VAO CAMERA", (cx-130, cy+115),
+                    cv2.FONT_HERSHEY_SIMPLEX, 0.4, (180,180,180), 1)
         cv2.putText(ov, "DUNG YEN", (cx-200, cy), cv2.FONT_HERSHEY_SIMPLEX, 0.55, lc, 1)
 
     cv2.addWeighted(ov, alpha / 255.0, frame, 1 - alpha / 255.0, 0, frame)
