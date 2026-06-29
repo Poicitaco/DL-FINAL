@@ -1,0 +1,27 @@
+Báo cáo này trình bày \textbf{GestuRhythm v2} --- hệ thống tổng hợp âm nhạc tương tác
+theo thời gian thực dựa trên phân tích cử chỉ người dùng qua webcam.
+
+Hệ thống giải quyết bài toán: \textit{Làm thế nào để người dùng không có kiến thức nhạc lý
+có thể tạo ra âm nhạc có cảm xúc chỉ bằng cử chỉ cơ thể?}
+
+\textbf{Kiến trúc đề xuất} gồm hai nhánh học tách biệt:
+(1)~\textbf{Gesture Emotion Encoder} --- Transformer Encoder học ánh xạ chuỗi landmarks
+bàn tay và cơ thể (trích xuất bởi MediaPipe Holistic) sang vector cảm xúc 2 chiều
+trong không gian Valence-Arousal;
+(2)~\textbf{Music Prior} --- mô hình GPT học phân phối xác suất nốt nhạc
+$P(\text{note}_t \mid \text{note}_{<t})$ từ 5.000 bản nhạc MIDI thuộc Lakh MIDI Dataset.
+Hai nhánh được kết hợp qua \textbf{Conditioned Music Decoder} với cơ chế Cross-Attention,
+sử dụng vector cảm xúc làm điều kiện để hướng dẫn Music Prior sinh ra nốt nhạc
+phù hợp với cảm xúc của người dùng.
+
+\textbf{Dataset} được tự thu thập gồm 1.853 mẫu từ 2 người, với 6 chế độ cảm xúc
+được thiết kế dựa trên mô hình Valence-Arousal. Nhạc nền được phát trong lúc thu
+để kích thích cảm xúc tự nhiên của người thu.
+
+\textbf{Kết quả:} Gesture Emotion Encoder đạt val loss 0.0059 (MSE);
+Music Prior đạt perplexity 4.01, cải thiện $32\times$ so với baseline ngẫu nhiên.
+Hệ thống hoạt động real-time với latency dưới 1 giây trên CPU thông thường.
+
+\medskip
+\textbf{Từ khóa:} học sâu, Transformer, Cross-Attention, sinh nhạc, cảm xúc âm nhạc,
+Valence-Arousal, MediaPipe, MIDI, thời gian thực.

@@ -1,0 +1,66 @@
+\chapter{Giới Thiệu}
+\label{chap:intro}
+
+\section{Đặt Vấn Đề và Động Lực}
+
+Âm nhạc là ngôn ngữ phổ quát của cảm xúc con người.
+Tuy nhiên, để tạo ra âm nhạc đòi hỏi nhiều năm luyện tập kỹ năng nhạc cụ
+và nền tảng kiến thức nhạc lý sâu rộng --- điều mà phần lớn dân số không có.
+
+Câu hỏi nghiên cứu trung tâm của đồ án này là:
+\begin{quote}
+\textit{Liệu một người không biết gì về nhạc lý có thể tạo ra âm nhạc có cảm xúc
+chỉ bằng cách di chuyển cơ thể tự nhiên trước một chiếc webcam thông thường?}
+\end{quote}
+
+Đây là hướng tiếp cận khác biệt so với các hệ thống điều khiển âm nhạc truyền thống
+(nhạc cụ MIDI, bàn phím điện tử) ở chỗ: người dùng không cần học bất kỳ quy ước
+điều khiển nào --- hệ thống tự học và thích nghi với ngôn ngữ cơ thể của họ.
+
+\section{Mục Tiêu Đồ Án}
+
+\begin{enumerate}
+  \item Xây dựng hệ thống sinh âm nhạc real-time từ cử chỉ người dùng
+        qua webcam thông thường.
+  \item Thiết kế và áp dụng kiến trúc hai nhánh:
+        \textbf{Gesture Emotion Encoder} (Transformer) và
+        \textbf{Music Prior} (GPT), kết hợp qua Cross-Attention.
+  \item Tự thiết kế giao thức thu thập và xây dựng dataset cặp
+        (chuỗi cử chỉ -- nhãn cảm xúc).
+  \item Huấn luyện Music Prior từ dữ liệu MIDI thật để đảm bảo
+        chất lượng âm nhạc.
+  \item Tích hợp đầu ra vào hệ thống tổng hợp âm thanh MIDI
+        real-time qua FluidSynth.
+\end{enumerate}
+
+\section{Phạm Vi và Giới Hạn}
+
+Hệ thống tập trung vào \textbf{melody đơn} (single-voice melody generation)
+và không giải quyết bài toán soạn nhạc đa bè phức tạp.
+Camera đơn sắc (webcam thông thường) được sử dụng mà không cần thiết bị đặc biệt.
+Dataset được thu thập từ 2 người trong môi trường có kiểm soát.
+
+\section{Đóng Góp Của Đồ Án}
+
+So với các hệ thống tương tự trong tài liệu, đồ án có các đóng góp:
+\begin{enumerate}
+  \item \textbf{Tách biệt luồng học cảm xúc và ngữ pháp âm nhạc:}
+        Không map trực tiếp cử chỉ sang nốt (như các hệ thống rule-based),
+        mà học hai không gian độc lập rồi kết hợp qua Cross-Attention.
+  \item \textbf{Dataset tự xây dựng:} 1.853 mẫu với 6 chế độ cảm xúc
+        được thiết kế có chủ đích dựa trên mô hình Valence-Arousal.
+  \item \textbf{Music Prior từ dữ liệu thật:} Huấn luyện trên
+        5.000 bản MIDI từ Lakh MIDI Dataset, đảm bảo nhạc sinh ra
+        tuân thủ ngữ pháp âm nhạc thực tế.
+\end{enumerate}
+
+\section{Bố Cục Báo Cáo}
+
+Báo cáo được tổ chức như sau:
+\begin{itemize}
+  \item \textbf{Chương~\ref{chap:related}:} Tổng quan các nghiên cứu liên quan.
+  \item \textbf{Chương~\ref{chap:method}:} Kiến trúc hệ thống và phương pháp đề xuất.
+  \item \textbf{Chương~\ref{chap:data}:} Thu thập, xử lý và phân tích dữ liệu.
+  \item \textbf{Chương~\ref{chap:exp}:} Thiết lập thực nghiệm và kết quả đánh giá.
+  \item \textbf{Chương~\ref{chap:conclude}:} Kết luận và hướng phát triển.
+\end{itemize}
