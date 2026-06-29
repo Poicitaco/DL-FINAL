@@ -1,159 +1,182 @@
 # GestuRhythm v2
 
-He thong tong hop am nhac real-time dua tren cam xuc cu chi tay.
-AI hoc tach biet: (1) cam xuc tu cu chi va (2) ngu phap am nhac tu MIDI thuc te.
-Sau do ket hop de sinh nhac vua co cam xuc vua dung nhac ly.
+Hệ thống tổng hợp âm nhạc real-time dựa trên cảm xúc của cử chỉ tay.
+
+Mô hình AI học tách biệt hai phần độc lập:
+1. **Emotion Encoder**: Nhận diện cảm xúc từ cử chỉ tay.
+2. **Music Prior**: Học ngữ pháp âm nhạc từ dữ liệu MIDI thực tế.
+
+Sau đó, hệ thống kết hợp cả hai thành phần trên để sinh ra âm nhạc vừa truyền tải được cảm xúc, vừa đảm bảo đúng nhạc lý.
 
 ---
 
-## Kien truc v2
+## Kiến trúc hệ thống (v2)
 
-```
+```text
 Webcam
   -> MediaPipe Holistic (21 hand + 33 pose landmarks)
-  -> Gesture Emotion Encoder (Transformer) -> Vector cam xuc [valence, arousal]
+  -> Gesture Emotion Encoder (Transformer) -> Vector cảm xúc [valence, arousal]
   -> Conditioned Music Decoder (Cross-Attention)
-  -> 16 not nhac
-  -> Scale Mask (dam bao dung nhac ly)
-  -> FluidSynth -> Am thanh
+  -> Chuỗi 16 nốt nhạc
+  -> Scale Mask (đảm bảo đúng nhạc lý)
+  -> FluidSynth -> Đầu ra âm thanh
          ^
          |
-  Music Prior (GPT trained on Lakh MIDI)
+  Music Prior (Mô hình GPT huấn luyện trên tập dữ liệu Lakh MIDI)
 ```
 
 ---
 
-## Cai dat (lam 1 lan)
+## Hướng dẫn cài đặt (Chỉ cần thực hiện một lần)
+
+### 1. Khởi tạo môi trường
+
+Chạy các lệnh sau trong terminal để tải mã nguồn và cài đặt các thư viện cần thiết:
 
 ```bash
 git clone https://github.com/Poicitaco/DL-FINAL.git
 cd DL-FINAL
 
+# Tạo và kích hoạt môi trường ảo Python 3.11
 py -3.11 -m venv venv
 venv\Scripts\activate
 pip install -r requirements.txt
 ```
 
-> **Luu y:** Can Python 3.11 (khong dung 3.12+). Kiem tra bang: `py -3.11 --version`
-> Neu chua co: tai tai https://www.python.org/downloads/release/python-3119/
+> [!IMPORTANT]
+> Dự án yêu cầu phiên bản **Python 3.11** (không hỗ trợ Python 3.12+).
+> - Kiểm tra phiên bản hiện tại bằng lệnh: `py -3.11 --version`
+> - Nếu chưa cài đặt, vui lòng tải về tại: [Python 3.11.9 Downloads](https://www.python.org/downloads/release/python-3119/)
 
-### Cai FluidSynth (can cho phan am thanh)
-1. Tai file zip tai: https://github.com/FluidSynth/fluidsynth/releases
-   - Chon file: `fluidsynth-2.x.x-win10-x64-glib.zip`
-2. Giai nen, copy tat ca file trong thu muc `bin\` vao `C:\tools\fluidsynth\bin\`
-3. Tai SoundFont: tim "FluidR3_GM.sf2" tren Google (file ~140MB)
-   - Luu vao: `soundfonts\FluidR3_GM.sf2`
+### 2. Cài đặt FluidSynth (bắt buộc cho đầu ra âm thanh)
 
-### Cai Camera (neu webcam hong)
-- **Camo** (iPhone): tai Camo Studio cho Windows + app Camo tren iPhone
-- **DroidCam** (Android/iPhone): tai tai dev47apps.com, cai ca app va client PC
+1. Tải bản phân phối FluidSynth dưới dạng file zip từ [FluidSynth Releases](https://github.com/FluidSynth/fluidsynth/releases).
+   - Chọn tệp: `fluidsynth-2.x.x-win10-x64-glib.zip` (phù hợp với hệ điều hành Windows 10/11 x64).
+2. Giải nén và sao chép toàn bộ các tệp trong thư mục `bin\` vào đường dẫn hệ thống: `C:\tools\fluidsynth\bin\`.
+3. Tải tệp SoundFont: Tìm kiếm từ khóa "FluidR3_GM.sf2" trên Google (dung lượng tệp khoảng 140MB).
+   - **Cụ thể, bạn có thể tải tại đây:** [FluidR3_GM.sf2 (136 MB)](https://sourceforge.net/projects/pianobooster/)
+   - Lưu tệp đã tải vào thư mục dự án theo đường dẫn: `soundfonts/FluidR3_GM.sf2`.
+
+### 3. Cài đặt Camera thay thế (nếu không có webcam tích hợp)
+
+Nếu webcam của máy tính gặp sự cố hoặc không khả dụng, bạn có thể biến điện thoại thành camera phụ thông qua các ứng dụng sau:
+- **Camo (iOS):** Tải phần mềm *Camo Studio* cho Windows và cài đặt ứng dụng *Camo* tương ứng trên App Store của iPhone.
+- **DroidCam (Android/iOS):** Tải phần mềm client từ trang [dev47apps.com](https://www.dev47apps.com/) cho máy tính và cài đặt ứng dụng trên thiết bị di động.
 
 ---
 
-## Thu data (moi nguoi lam)
+## Thu thập dữ liệu cử chỉ (Tất cả thành viên thực hiện)
+
+Chạy các kịch bản sau để thiết lập camera và tiến hành thu thập dữ liệu cử chỉ tay:
 
 ```bash
+# Kích hoạt môi trường ảo nếu chưa thực hiện
 venv\Scripts\activate
-python scripts/select_camera.py    # chon camera 1 lan
-python scripts/collect_data_v2.py  # thu data
+
+# Chọn nguồn camera đầu vào (chỉ cần làm một lần)
+python scripts/select_camera.py
+
+# Bắt đầu chạy script thu thập dữ liệu cử chỉ
+python scripts/collect_data_v2.py
 ```
 
-### 6 che do cam xuc can thu
+### 6 trạng thái cảm xúc cần thu thập
 
-| # | Ten | Cam xuc | Cach di chuyen |
-|---|-----|---------|----------------|
-| 1 | HAPPY_HIGH | Vui + Nang luong cao | Tay NHANH, RONG, LEN CAO — nhu dang nhay mua |
-| 2 | HAPPY_LOW  | Vui + Nhe nhang      | Tay CHAM, TRON, NHE — nhu dang lau kinh |
-| 3 | SAD_HIGH   | Buon + Cang thang    | Tay xuong thap, di chuyen GAP va CO RUT lai |
-| 4 | SAD_LOW    | Buon + Cham          | Tay xuong thap nhat, RAT CHAM va NANG NE |
-| 5 | NEUTRAL    | Trung tinh           | Tay giua man hinh, di chuyen DEU DANG |
-| 6 | NONE       | Khong tay            | De tay xuong, KHONG co tay trong khung hinh |
+| # | Tên nhãn | Cảm xúc tương ứng | Cách di chuyển tay |
+|---|---|---|---|
+| 1 | `HAPPY_HIGH` | Vui vẻ + Năng lượng cao | Di chuyển tay **nhanh, biên độ rộng, đưa lên cao** (tương tự như đang nhảy múa). |
+| 2 | `HAPPY_LOW` | Vui vẻ + Nhẹ nhàng | Di chuyển tay **chậm, vẽ đường tròn nhẹ nhàng** (tương tự như đang lau kính). |
+| 3 | `SAD_HIGH` | Buồn bã + Căng thẳng | Đặt tay **thấp**, di chuyển **gấp gáp và co rút** lại (như đang bóp tay). |
+| 4 | `SAD_LOW` | Buồn bã + Trầm lắng | Đặt tay **thấp nhất**, di chuyển **rất chậm và nặng nề**. |
+| 5 | `NEUTRAL` | Trung tính | Giữ tay ở **giữa màn hình**, di chuyển **đều đặn** (tương tự như đang gõ bàn phím). |
+| 6 | `NONE` | Không có cử chỉ | Hạ tay xuống hoàn toàn, **không để tay** xuất hiện trong khung hình. |
 
-### Luu y khi thu
-- **Chi can 1 tay** (tay thuan) — khong can dung ca 2 tay
-- **Nua than tren** trong khung hinh — MediaPipe bat dau tu vai tro xuong
-- Mo tay (khong nam), long ban tay huong vao camera
-- Cam camera cach 50-70cm, thay ro tu vai den ngon tay
-- Giu tay trong 2 duong xanh tren man hinh
-- **NGHE NHAC NEN va DI CHUYEN TAY THEO CAM XUC CUA NHAC**
-- Moi che do tu dung khi du 150 samples, nhan SPACE sang che do tiep
-- Nhan Q de thoat (data da thu van duoc luu)
+### Lưu ý quan trọng khi thu thập dữ liệu cử chỉ
 
-### Huong dan cu the tung che do
+- **Sử dụng một tay:** Chỉ cần sử dụng một tay thuận (không cần thực hiện bằng cả hai tay).
+- **Vị trí cơ thể:** Đảm bảo nửa thân trên nằm trong khung hình (MediaPipe tính toán các điểm mốc bắt đầu từ khớp vai trở xuống).
+- **Tư thế tay:** Mở rộng bàn tay (không nắm lại), hướng lòng bàn tay về phía camera.
+- **Khoảng cách:** Đặt camera cách người từ 50-70 cm, đảm bảo nhìn thấy rõ từ vai đến các ngón tay.
+- **Vùng giới hạn:** Giữ bàn tay nằm trong phạm vi giữa hai đường kẻ xanh hiển thị trên màn hình.
+- **Tương tác cảm xúc:** **Hãy lắng nghe nhạc nền và di chuyển tay hòa nhịp theo cảm xúc của bản nhạc**.
+- **Tiến trình:** Mỗi chế độ thu thập dữ liệu sẽ tự động dừng sau khi lưu đủ 150 mẫu (samples). Nhấn phím `SPACE` để chuyển sang chế độ tiếp theo.
+- **Dừng chương trình:** Nhấn phím `Q` để thoát (dữ liệu đã thu thập trước đó vẫn sẽ được lưu trữ tự động).
 
-| # | Ten | Lam gi cu the |
-|---|-----|---------------|
-| 1 | HAPPY_HIGH | Tay giu len cao, vay qua lai NHANH va RONG — nhu dang co vu |
-| 2 | HAPPY_LOW  | Tay di chuyen ngang CHAM, bieu do nho — nhu dang vuot ve |
-| 3 | SAD_HIGH   | Tay de THAP, di chuyen GAP va co rut lai — nhu dang bop tay |
-| 4 | SAD_LOW    | Tay de THAP NHAT, di chuyen RAT CHAM — nhu tay nang khong nhac len |
-| 5 | NEUTRAL    | Tay o GIUA man hinh, di chuyen DEU DANG — nhu dang go ban phim |
-| 6 | NONE       | Ha tay xuong, KHONG co tay trong khung hinh |
+### Hướng dẫn chi tiết từng chế độ cử chỉ
 
-### Upload CSV len Drive
-Sau khi thu xong, upload file `data/raw/gesture_data_v2.csv` len Google Drive.
-Dat ten theo nguoi: `gesture_data_v2_A.csv`, `gesture_data_v2_B.csv`...
+| # | Tên nhãn | Hành động cụ thể |
+|---|---|---|
+| 1 | `HAPPY_HIGH` | Giữ tay lên cao, vẫy qua lại **nhanh** và **rộng** (tương tự như đang cổ vũ). |
+| 2 | `HAPPY_LOW` | Di chuyển tay theo chiều ngang một cách **chậm rãi**, biên độ nhỏ (tương tự như đang vuốt ve). |
+| 3 | `SAD_HIGH` | Đặt tay **thấp**, di chuyển **gấp gáp** và co rút tay lại (tương tự như đang bóp tay). |
+| 4 | `SAD_LOW` | Đặt tay **thấp nhất**, di chuyển **rất chậm** (cảm giác tay nặng nề không nhấc lên nổi). |
+| 5 | `NEUTRAL` | Giữ tay ở **giữa màn hình**, di chuyển **đều đặn** (tương tự như đang gõ bàn phím). |
+| 6 | `NONE` | Hạ tay xuống, **không để tay** xuất hiện trong khung hình camera. |
+
+### Lưu trữ và chia sẻ dữ liệu
+
+Sau khi hoàn tất quá trình thu thập, hãy tải tệp dữ liệu `data/raw/gesture_data_v2.csv` lên thư mục Google Drive chung của nhóm.
+- **Quy ước đặt tên tệp:** Đặt tên tệp theo tên thành viên để tránh trùng lặp: `gesture_data_v2_A.csv`, `gesture_data_v2_B.csv`,...
 
 ---
 
-## Sau khi co du data (nhom truong lam)
+## Quy trình huấn luyện và chạy thử nghiệm (Dành cho trưởng nhóm/người tích hợp)
+
+Khi đã thu thập đầy đủ tệp tin CSV từ các thành viên, thực hiện các bước sau để gộp dữ liệu, tiền xử lý, huấn luyện và chạy thử nghiệm:
 
 ```bash
-# 1. Merge data tu nhieu nguoi
-python scripts/merge_data.py   # (neu co nhieu file CSV)
+# 1. Di chuyển tất cả các tệp CSV nhận được vào thư mục: data/raw/
 
-# 2. Prepare dataset
+# 2. Gộp dữ liệu từ các thành viên
+python scripts/merge_data.py
+
+# 3. Tiền xử lý dữ liệu để chuẩn bị cho việc huấn luyện
 python scripts/prepare_dataset_v2.py
-# -> data/processed/gesturhythm_v2.zip
 
-# 3. Upload gesturhythm_v2.zip len Kaggle Dataset (ten: gesturhythm-v2)
+# 4. Tải dữ liệu đã xử lý lên Kaggle và thực hiện huấn luyện mô hình theo notebook:
+# notebooks/train_v2.ipynb
 
-# 4. Train theo thu tu:
-#    Buoc 1: notebooks/train_v2.ipynb          -> gesture_emotion_encoder.pt
-#    Buoc 2: notebooks/train_music_prior.ipynb -> music_prior.pt
-#    Buoc 3: notebooks/train_conditioned_decoder.ipynb -> conditioned_decoder.pt
-#    (Buoc 3 can ca 2 model tren + gesturhythm-v2 dataset)
+# 5. Sau khi huấn luyện thành công, tải các file trọng số mô hình đã train về thư mục model/:
+# - gesture_emotion_encoder.pt
+# - music_prior.pt
+# - conditioned_decoder.pt
 
-# 5. Download ve, luu vao model/
-#    model/gesture_emotion_encoder.pt
-#    model/music_prior.pt
-#    model/conditioned_decoder.pt
-
-# 6. Chay real-time
+# 6. Chạy thử nghiệm hệ thống trong thời gian thực (real-time)
 python inference/realtime_v2.py
 ```
 
 ---
 
-## Cau truc thu muc
+## Cấu trúc thư mục dự án
 
-```
-src/
-  emotion_encoder/   - Gesture Emotion Encoder model
-  music_prior/       - GPT Music Prior model
-  decoder/           - Conditioned Music Decoder
-  utils/             - Scale mask, MIDI utils
-
-scripts/
-  select_camera.py          - Chon camera
-  collect_data_v2.py        - Thu data (6 che do cam xuc)
-  merge_data.py             - Gop data nhieu nguoi
-  prepare_dataset_v2.py     - Xu ly data cho Kaggle
-
-data/
-  raw/       - gesture_data_v2.csv (sau khi thu)
-  processed/ - train/val split (sau khi prepare)
-
-notebooks/
-  train_v2.ipynb   - Train tren Kaggle
-
-model/
-  gesture_emotion_encoder.pt
-  conditioned_decoder.pt
-
-inference/
-  realtime_v2.py   - Chay demo real-time
-
-soundfonts/
-  FluidR3_GM.sf2   - Am thanh (tu tai ve)
+```text
+.
+├── src/
+│   ├── emotion_encoder/     # Kiến trúc mô hình Gesture Emotion Encoder
+│   ├── music_prior/         # Kiến trúc mô hình GPT Music Prior
+│   ├── decoder/             # Kiến trúc mô hình Conditioned Music Decoder
+│   └── utils/               # Các hàm bổ trợ (Scale mask, xử lý MIDI...)
+│
+├── scripts/
+│   ├── select_camera.py     # Script cấu hình và chọn thiết bị camera đầu vào
+│   ├── collect_data_v2.py   # Script thu thập dữ liệu cử chỉ (6 chế độ cảm xúc)
+│   ├── merge_data.py        # Script gộp dữ liệu từ nhiều thành viên
+│   └── prepare_dataset_v2.py # Script tiền xử lý dữ liệu chuẩn bị cho việc train trên Kaggle
+│
+├── data/
+│   ├── raw/                 # Chứa tệp gesture_data_v2.csv sau khi thu thập xong
+│   └── processed/           # Chứa tập dữ liệu train/val đã được phân tách
+│
+├── notebooks/
+│   └── train_v2.ipynb       # Jupyter notebook dùng để huấn luyện mô hình trên Kaggle
+│
+├── model/                   # Thư mục lưu trữ các trọng số mô hình đã huấn luyện
+│   ├── gesture_emotion_encoder.pt
+│   └── conditioned_decoder.pt
+│
+├── inference/
+│   └── realtime_v2.py       # Script chạy thực nghiệm hệ thống thời gian thực (demo real-time)
+│
+└── soundfonts/
+    └── FluidR3_GM.sf2       # Tệp cơ sở dữ liệu âm thanh SoundFont (tải thủ công)
 ```
