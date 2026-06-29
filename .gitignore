@@ -30,3 +30,8 @@ camera_config.txt
 # OS
 .DS_Store
 Thumbs.db
+
+data/raw/*.csv
+data/processed/*.npy
+data/processed/*.zip
+
